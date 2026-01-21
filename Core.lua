@@ -82,7 +82,19 @@ end
 
 -- Print helper
 function MithUI:Print(msg)
-    print("|cff00ccffMithUI|r: " .. msg)
+    print("|cff9945ffMithUI|r: " .. msg)
+end
+
+-- Error logging
+function MithUI:Error(module, msg)
+    print("|cff9945ffMithUI|r |cffff0000ERROR|r [" .. module .. "]: " .. msg)
+end
+
+-- Debug logging (only when debug mode enabled)
+function MithUI:Debug(module, msg)
+    if MithUIDB and MithUIDB.debugMode then
+        print("|cff9945ffMithUI|r |cff888888DEBUG|r [" .. module .. "]: " .. msg)
+    end
 end
 
 -- Event frame
@@ -163,20 +175,14 @@ SlashCmdList["MITHUI"] = function(msg)
         MithUI:Print("Commands:")
         print("  |cff00ff00/mu|r - Open settings GUI")
         print("  |cff00ff00/mc|r - Cast bar options")
-        print("  |cff00ff00/mp|r - Radial menu options")
+        print("  |cff00ff00/mp|r - Radial menu (create macro to keybind)")
         print("  |cff00ff00/av|r - Auto vendor options")
         print("  |cff00ff00/tt|r - Tooltip options")
         print("  |cff00ff00/chat|r - Chat options")
         print("  |cff00ff00/mm|r - Minimap options")
         print("  |cff00ff00/np|r - Nameplate options")
-        print("")
-        print("Keybind radial menu in: ESC > Key Bindings > Addons > MithUI")
     end
 end
 
 -- Export to global
 _G.MithUI = MithUI
-
--- Binding names (for Key Bindings UI)
-BINDING_HEADER_MITHUI = "MithUI"
-BINDING_NAME_MITHUI_RADIAL_MENU = "Open Radial Menu"

@@ -2,7 +2,7 @@
 
 **A clean, all-in-one UI addon for World of Warcraft 12.0 (Midnight)**
 
-One addon. Nine modules. Zero clutter.
+One addon. Ten modules. Zero clutter.
 
 ---
 
@@ -11,7 +11,8 @@ One addon. Nine modules. Zero clutter.
 | Module | What It Does |
 |--------|--------------|
 | 🎯 **Cast Bar** | Luxthos-style centered cast bar with spell icon and timer |
-| 🎡 **Radial Menu** | OPie-style pie menu for mounts, hearthstones, and class abilities |
+| 🎡 **Radial Menu** | OPie-style pie menu for mounts and hearthstones |
+| 💡 **Assist Display** | Shows the Assist-highlighted ability BIG with keybind |
 | 🏪 **Auto Vendor** | Auto-repair and sell junk when you visit a vendor |
 | 💬 **Tooltips** | Shows item level, spec, guild, and target-of-target on hover |
 | 📝 **Chat** | Clickable URLs, copy button, class-colored names |
@@ -38,12 +39,41 @@ Type `/mu` to open the settings GUI — everything is configurable from there.
 ```
 /mc  → Cast Bar
 /mp  → Radial Menu (Pie)
+/ma  → Assist Display
 /av  → Auto Vendor
 /tt  → Tooltips
 /chat → Chat
 /mm  → Minimap
 /ct  → Combat Text
 /np  → Nameplates
+```
+
+---
+
+## 💡 Assist Display (NEW!)
+
+Makes the WoW 12.0 Assist rotation helper actually visible!
+
+When Blizzard's Assist system highlights an ability, this module shows it in a **large, prominent frame** with:
+- Big ability icon with blue Blizzard-style glow
+- Your keybind displayed prominently
+- Spell name below
+- Cooldown swipe
+
+**Features:**
+- Moveable — unlock and drag anywhere
+- Scaleable — make it as big as you need
+- Blue animated glow like Blizzard's style
+
+```
+/ma toggle   → Enable/disable
+/ma lock     → Lock/unlock position (drag when unlocked)
+/ma scale 1.5 → Make it bigger (default 1.2)
+/ma keybind  → Toggle keybind display
+/ma name     → Toggle spell name
+/ma glow     → Toggle animated glow
+/ma test     → Show test display
+/ma reset    → Reset position to default
 ```
 
 ---
@@ -67,30 +97,23 @@ Clean, minimal, Luxthos-inspired.
 
 ## 🎡 Radial Menu
 
-Like OPie — a pie menu that pops up with your stuff.
+Like OPie — a pie menu for mounts and hearthstones.
 
 **How to use:**
-1. Set a keybind in **Key Bindings → MithUI**
-2. **Hold** the key — category menu appears (Mounts, Hearthstones, Class)
-3. **Move mouse** toward a category — sub-menu opens with items
-4. **Move to specific item** — it highlights
-5. **Release** the key — activates that item
+1. Type `/mp` or set a keybind
+2. Hover over a category (Mounts or Hearthstones)
+3. Scroll wheel to cycle through items — see them in an arc
+4. Click or release keybind to use the selected item
 
-**3 Categories:**
-1. **Mounts** — Your favorite mounts + random favorite
-2. **Hearthstones** — All your hearthstones and teleport toys
-3. **Class Abilities** — Death Gate, Soulwell, Ritual of Summoning, etc.
-
-**Keybinds available:**
-- Toggle Radial Menu (starts at category selection)
-- Radial Menu: Mounts (skips to mounts directly)
-- Radial Menu: Hearthstones (skips to hearthstones directly)
-- Radial Menu: Class (skips to class abilities directly)
+**Categories:**
+- **Mounts** — Your favorite mounts + random favorite
+- **Hearthstones** — All your hearthstone toys and items
 
 ```
-/mp          → Open menu (click mode)
-/mp refresh  → Refresh rings (detect new items)
-/mp list     → List all rings
+/mp          → Toggle menu
+/mp refresh  → Refresh categories
+/mp scale N  → Set scale
+/mp debug    → Show debug info
 ```
 
 ---
@@ -189,19 +212,11 @@ Tidy Plates-style with smart indicators.
 - 🔴 **Red cast bar + shield** = Can't interrupt
 - Threat colors show who has aggro
 
-### Themes:
-```
-/np theme grey      → Clean minimal (default)
-/np theme neon      → Glowing style
-/np theme clean     → Modern look
-/np theme thin      → Minimal thin bars
-/np theme headline  → Names only, no bars
-```
-
 ```
 /np toggle   → Turn on/off
 /np quest    → Toggle quest mob highlighting
 /np threat   → Toggle threat colors
+/np debug    → Debug nameplate detection
 ```
 
 ---
@@ -209,8 +224,6 @@ Tidy Plates-style with smart indicators.
 ## ⚙️ Settings GUI
 
 Type `/mu` to open the full settings panel.
-
-8 tabs for all modules — checkboxes, sliders, everything you need.
 
 ---
 
@@ -225,7 +238,7 @@ Type `/mu` to open the full settings panel.
 
 **Mith**
 
-Version **1.3.0**
+Version **1.5.0**
 
 ---
 

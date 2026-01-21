@@ -10,16 +10,19 @@ local db
 local mainFrame
 local currentTab = 1
 
--- Colors
+-- Colors - Warlock Theme (dark purple, fel green, demonic)
 local COLORS = {
-    bg = {0.1, 0.1, 0.1, 0.95},
-    header = {0.15, 0.15, 0.15, 1},
-    border = {0.3, 0.3, 0.3, 1},
-    accent = {0, 0.8, 1, 1},
-    text = {1, 1, 1, 1},
-    textDim = {0.6, 0.6, 0.6, 1},
-    tabActive = {0.2, 0.5, 0.8, 1},
-    tabInactive = {0.2, 0.2, 0.2, 1},
+    bg = {0.05, 0.02, 0.08, 0.97},           -- Deep dark purple
+    header = {0.12, 0.04, 0.15, 1},           -- Darker purple header
+    border = {0.4, 0.1, 0.5, 1},              -- Purple border
+    accent = {0.6, 0.2, 1, 1},                -- Bright purple accent
+    fel = {0.4, 1, 0.3, 1},                   -- Fel green
+    felDark = {0.2, 0.6, 0.15, 1},            -- Darker fel
+    text = {0.9, 0.85, 1, 1},                 -- Light purple-tinted text
+    textDim = {0.5, 0.4, 0.6, 1},             -- Dimmed purple text
+    tabActive = {0.5, 0.1, 0.6, 1},           -- Active tab purple
+    tabInactive = {0.15, 0.05, 0.2, 1},       -- Inactive tab dark
+    shadow = {0.6, 0, 0.8, 0.3},              -- Purple shadow/glow
 }
 
 function ConfigGUI:OnInitialize()
@@ -57,6 +60,24 @@ function ConfigGUI:CreateMainFrame()
     mainFrame:SetBackdropColor(unpack(COLORS.bg))
     mainFrame:SetBackdropBorderColor(unpack(COLORS.border))
     
+    -- Outer glow (demonic purple)
+    local glow = mainFrame:CreateTexture(nil, "BACKGROUND", nil, -8)
+    glow:SetPoint("TOPLEFT", -15, 15)
+    glow:SetPoint("BOTTOMRIGHT", 15, -15)
+    glow:SetTexture("Interface\\Buttons\\WHITE8x8")
+    glow:SetGradient("VERTICAL", 
+        CreateColor(0.3, 0, 0.4, 0.4),
+        CreateColor(0.1, 0.3, 0.1, 0.3))
+    glow:SetBlendMode("ADD")
+    
+    -- Inner shadow/vignette effect
+    local innerShadow = mainFrame:CreateTexture(nil, "BORDER")
+    innerShadow:SetAllPoints()
+    innerShadow:SetTexture("Interface\\Buttons\\WHITE8x8")
+    innerShadow:SetGradient("VERTICAL",
+        CreateColor(0.02, 0, 0.05, 0.5),
+        CreateColor(0.08, 0.02, 0.1, 0))
+    
     -- Make movable
     mainFrame:SetMovable(true)
     mainFrame:EnableMouse(true)
@@ -82,11 +103,11 @@ function ConfigGUI:CreateMainFrame()
     })
     header:SetBackdropColor(unpack(COLORS.header))
     
-    -- Title
+    -- Title with warlock flair
     local title = header:CreateFontString(nil, "OVERLAY")
     title:SetFont("Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
     title:SetPoint("LEFT", 12, 0)
-    title:SetText("|cff00ccffMithUI|r Settings")
+    title:SetText("|cff9945ffMith|r|cff33ff33UI|r")  -- Purple + Fel green
     
     -- Version
     local version = header:CreateFontString(nil, "OVERLAY")
@@ -105,10 +126,10 @@ function ConfigGUI:CreateMainFrame()
     closeText:SetFont("Fonts\\FRIZQT__.TTF", 16, "OUTLINE")
     closeText:SetPoint("CENTER")
     closeText:SetText("x")
-    closeText:SetTextColor(0.8, 0.8, 0.8)
+    closeText:SetTextColor(0.7, 0.5, 0.9)  -- Purple
     
-    closeBtn:SetScript("OnEnter", function() closeText:SetTextColor(1, 0.3, 0.3) end)
-    closeBtn:SetScript("OnLeave", function() closeText:SetTextColor(0.8, 0.8, 0.8) end)
+    closeBtn:SetScript("OnEnter", function() closeText:SetTextColor(0.4, 1, 0.3) end)  -- Fel green on hover
+    closeBtn:SetScript("OnLeave", function() closeText:SetTextColor(0.7, 0.5, 0.9) end)  -- Purple normally
     closeBtn:SetScript("OnClick", function() mainFrame:Hide() end)
     
     -- Tab container
@@ -119,12 +140,12 @@ function ConfigGUI:CreateMainFrame()
     
     -- Tabs
     mainFrame.tabs = {}
-    local tabNames = {"Cast Bar", "Radial", "Vendor", "Tooltips", "Chat", "Minimap", "Plates"}
+    local tabNames = {"Cast Bar", "Radial", "Assist", "Vendor", "Tooltips", "Chat", "Minimap", "Plates"}
     
     for i, name in ipairs(tabNames) do
         local tab = CreateFrame("Button", nil, tabContainer, "BackdropTemplate")
-        tab:SetSize(58, 28)
-        tab:SetPoint("LEFT", (i-1) * 60 + 5, 0)
+        tab:SetSize(52, 28)
+        tab:SetPoint("LEFT", (i-1) * 54 + 5, 0)
         tab:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8x8",
             edgeFile = "Interface\\Buttons\\WHITE8x8",
@@ -144,13 +165,15 @@ function ConfigGUI:CreateMainFrame()
         
         tab:SetScript("OnEnter", function(self)
             if currentTab ~= i then
-                self:SetBackdropColor(0.25, 0.25, 0.25, 1)
+                self:SetBackdropColor(0.25, 0.08, 0.3, 1)  -- Lighter purple on hover
+                self.text:SetTextColor(0.8, 0.6, 1)
             end
         end)
         
         tab:SetScript("OnLeave", function(self)
             if currentTab ~= i then
                 self:SetBackdropColor(unpack(COLORS.tabInactive))
+                self.text:SetTextColor(0.6, 0.5, 0.7)
             end
         end)
         
@@ -167,16 +190,16 @@ function ConfigGUI:CreateMainFrame()
 end
 
 function ConfigGUI:RefreshTab()
-    -- Update tab appearance
+    -- Update tab appearance - Warlock style
     for i, tab in ipairs(mainFrame.tabs) do
         if i == currentTab then
             tab:SetBackdropColor(unpack(COLORS.tabActive))
-            tab:SetBackdropBorderColor(unpack(COLORS.accent))
-            tab.text:SetTextColor(1, 1, 1)
+            tab:SetBackdropBorderColor(0.4, 1, 0.3, 1)  -- Fel green border on active
+            tab.text:SetTextColor(0.4, 1, 0.3)  -- Fel green text
         else
             tab:SetBackdropColor(unpack(COLORS.tabInactive))
             tab:SetBackdropBorderColor(unpack(COLORS.border))
-            tab.text:SetTextColor(0.7, 0.7, 0.7)
+            tab.text:SetTextColor(0.6, 0.5, 0.7)  -- Muted purple
         end
     end
     
@@ -198,14 +221,16 @@ function ConfigGUI:RefreshTab()
     elseif currentTab == 2 then
         self:BuildRadialMenuTab()
     elseif currentTab == 3 then
-        self:BuildVendorTab()
+        self:BuildAssistTab()
     elseif currentTab == 4 then
-        self:BuildTooltipsTab()
+        self:BuildVendorTab()
     elseif currentTab == 5 then
-        self:BuildChatTab()
+        self:BuildTooltipsTab()
     elseif currentTab == 6 then
-        self:BuildMinimapTab()
+        self:BuildChatTab()
     elseif currentTab == 7 then
+        self:BuildMinimapTab()
+    elseif currentTab == 8 then
         self:BuildNameplatesTab()
     end
 end
@@ -313,47 +338,140 @@ function ConfigGUI:BuildRadialMenuTab()
         end)
     yOffset = yOffset - 40
     
+    -- Keybind section
+    local keybindLabel = content:CreateFontString(nil, "OVERLAY")
+    keybindLabel:SetFont("Fonts\\FRIZQT__.TTF", 11, "")
+    keybindLabel:SetPoint("TOPLEFT", 0, yOffset)
+    keybindLabel:SetText("Keybind:")
+    keybindLabel:SetTextColor(1, 1, 1)
+    
+    -- Keybind display
+    local keybindDisplay = content:CreateFontString(nil, "OVERLAY")
+    keybindDisplay:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+    keybindDisplay:SetPoint("LEFT", keybindLabel, "RIGHT", 8, 0)
+    keybindDisplay:SetTextColor(0, 0.8, 1)
+    
+    -- Get current keybind
+    local currentBind = GetBindingKey("CLICK MithUIRadialMenuButton:LeftButton") or "Not Set"
+    keybindDisplay:SetText(currentBind)
+    
+    -- Set Keybind button
+    local keybindBtn = self:CreateButton(content, "Set Keybind", 150, yOffset, 100, function() end)
+    
+    -- Keybind capture state
+    local capturing = false
+    
+    keybindBtn:SetScript("OnClick", function(self)
+        if capturing then return end
+        capturing = true
+        keybindDisplay:SetText("|cffff0000Press a key...|r")
+        
+        -- Create capture frame
+        local captureFrame = CreateFrame("Frame", nil, UIParent)
+        captureFrame:SetFrameStrata("FULLSCREEN_DIALOG")
+        captureFrame:SetAllPoints()
+        captureFrame:EnableKeyboard(true)
+        captureFrame:SetScript("OnKeyDown", function(self, key)
+            -- Ignore modifier keys alone
+            if key == "LSHIFT" or key == "RSHIFT" or key == "LCTRL" or key == "RCTRL" or key == "LALT" or key == "RALT" then
+                return
+            end
+            
+            -- Build the key string with modifiers
+            local bind = ""
+            if IsShiftKeyDown() then bind = bind .. "SHIFT-" end
+            if IsControlKeyDown() then bind = bind .. "CTRL-" end
+            if IsAltKeyDown() then bind = bind .. "ALT-" end
+            bind = bind .. key
+            
+            -- ESC to cancel
+            if key == "ESCAPE" then
+                keybindDisplay:SetText(GetBindingKey("CLICK MithUIRadialMenuButton:LeftButton") or "Not Set")
+                capturing = false
+                self:Hide()
+                return
+            end
+            
+            -- Set the binding
+            if not InCombatLockdown() then
+                -- Clear old binding first
+                local oldKey = GetBindingKey("CLICK MithUIRadialMenuButton:LeftButton")
+                if oldKey then
+                    SetBinding(oldKey, nil)
+                end
+                
+                -- Set new binding
+                SetBinding(bind, "CLICK MithUIRadialMenuButton:LeftButton")
+                SaveBindings(GetCurrentBindingSet())
+                
+                keybindDisplay:SetText(bind)
+                MithUI:Print("Radial Menu bound to: " .. bind)
+            else
+                MithUI:Print("Cannot change keybinds in combat")
+                keybindDisplay:SetText(GetBindingKey("CLICK MithUIRadialMenuButton:LeftButton") or "Not Set")
+            end
+            
+            capturing = false
+            self:Hide()
+        end)
+        
+        captureFrame:SetScript("OnMouseDown", function(self, button)
+            if button == "LeftButton" or button == "RightButton" then
+                -- Cancel on mouse click
+                keybindDisplay:SetText(GetBindingKey("CLICK MithUIRadialMenuButton:LeftButton") or "Not Set")
+                capturing = false
+                self:Hide()
+            end
+        end)
+    end)
+    
+    -- Clear keybind button
+    local clearBtn = self:CreateButton(content, "Clear", 260, yOffset, 60, function()
+        if not InCombatLockdown() then
+            local oldKey = GetBindingKey("CLICK MithUIRadialMenuButton:LeftButton")
+            if oldKey then
+                SetBinding(oldKey, nil)
+                SaveBindings(GetCurrentBindingSet())
+            end
+            keybindDisplay:SetText("Not Set")
+            MithUI:Print("Keybind cleared")
+        end
+    end)
+    
+    yOffset = yOffset - 50
+    
     -- Scale slider
-    local scaleSlider = self:CreateSlider(content, "Scale", 0, yOffset, 0.5, 2.0,
-        MithUIDB.radialMenu.scale or 1.0,
+    local scaleSlider = self:CreateSlider(content, "Scale", 0, yOffset, 50, 200,
+        (MithUIDB.radialMenu.scale or 1.0) * 100,
         function(value)
-            MithUIDB.radialMenu.scale = value
+            MithUIDB.radialMenu.scale = value / 100
             local rm = MithUI:GetModule("radialMenu")
             if rm and MithUIRadialMenu then
-                MithUIRadialMenu:SetScale(value)
+                MithUIRadialMenu:SetScale(value / 100)
             end
         end)
     yOffset = yOffset - 50
     
     -- Radius slider
-    local radiusSlider = self:CreateSlider(content, "Ring Radius", 0, yOffset, 60, 150,
-        MithUIDB.radialMenu.ringRadius or 100,
+    local radiusSlider = self:CreateSlider(content, "Ring Radius", 0, yOffset, 60, 200,
+        MithUIDB.radialMenu.ringRadius or 150,
         function(value)
             MithUIDB.radialMenu.ringRadius = value
-            local rm = MithUI:GetModule("radialMenu")
-            if rm then rm:CreateSlots() end
         end)
     yOffset = yOffset - 50
     
     -- Button size slider
-    local btnSlider = self:CreateSlider(content, "Button Size", 0, yOffset, 30, 60,
-        MithUIDB.radialMenu.buttonSize or 40,
+    local btnSlider = self:CreateSlider(content, "Button Size", 0, yOffset, 24, 50,
+        MithUIDB.radialMenu.buttonSize or 30,
         function(value)
             MithUIDB.radialMenu.buttonSize = value
-            local rm = MithUI:GetModule("radialMenu")
-            if rm then rm:CreateSlots() end
         end)
     yOffset = yOffset - 50
     
-    -- Open menu button
+    -- Test menu button
     local openBtn = self:CreateButton(content, "Test Menu", 0, yOffset, 100, function()
         local rm = MithUI:GetModule("radialMenu")
         if rm then rm:Toggle() end
-    end)
-    
-    -- Open keybindings button - open WoW keybindings
-    local keybindBtn = self:CreateButton(content, "Set Keybind", 110, yOffset, 100, function()
-        Settings.OpenToCategory(Settings.KEYBINDINGS_CATEGORY_ID)
     end)
     yOffset = yOffset - 40
     
@@ -364,7 +482,116 @@ function ConfigGUI:BuildRadialMenuTab()
     helpText:SetWidth(400)
     helpText:SetJustifyH("LEFT")
     helpText:SetTextColor(unpack(COLORS.textDim))
-    helpText:SetText("Keybind: ESC > Key Bindings > Addons > MithUI\n\nUsage: Press key > Move mouse to item > Release")
+    helpText:SetText("Press keybind > Scroll wheel to change rings > Click item")
+end
+
+function ConfigGUI:BuildAssistTab()
+    local content = mainFrame.content
+    local yOffset = 0
+    
+    if not MithUIDB.assistDisplay then MithUIDB.assistDisplay = {} end
+    local adb = MithUIDB.assistDisplay
+    
+    -- Enable checkbox
+    local enableCB = self:CreateCheckbox(content, "Enable Assist Display", 0, yOffset,
+        adb.enabled ~= false,
+        function(checked)
+            adb.enabled = checked
+            local ad = MithUI:GetModule("assistDisplay")
+            if ad then
+                if checked then ad:StartWatching() else ad:StopWatching() end
+            end
+        end)
+    yOffset = yOffset - 30
+    
+    -- Lock Position
+    local lockCB = self:CreateCheckbox(content, "Lock Position", 0, yOffset,
+        adb.locked ~= false,
+        function(checked)
+            adb.locked = checked
+            MithUI:Print("Assist Display " .. (checked and "locked" or "unlocked - drag to move"))
+        end)
+    yOffset = yOffset - 30
+    
+    -- Show Keybind
+    local keybindCB = self:CreateCheckbox(content, "Show Keybind", 0, yOffset,
+        adb.showKeybind ~= false,
+        function(checked)
+            adb.showKeybind = checked
+        end)
+    yOffset = yOffset - 30
+    
+    -- Show Spell Name
+    local nameCB = self:CreateCheckbox(content, "Show Spell Name", 0, yOffset,
+        adb.showSpellName ~= false,
+        function(checked)
+            adb.showSpellName = checked
+        end)
+    yOffset = yOffset - 30
+    
+    -- Glow Effect
+    local glowCB = self:CreateCheckbox(content, "Animated Glow", 0, yOffset,
+        adb.glowEnabled ~= false,
+        function(checked)
+            adb.glowEnabled = checked
+        end)
+    yOffset = yOffset - 40
+    
+    -- Scale slider
+    local scaleSlider = self:CreateSlider(content, "Scale", 0, yOffset, 50, 250,
+        (adb.scale or 1.2) * 100,
+        function(value)
+            adb.scale = value / 100
+            if MithUIAssistDisplay then
+                MithUIAssistDisplay:SetScale(value / 100)
+            end
+        end)
+    yOffset = yOffset - 50
+    
+    -- Test button
+    local testBtn = self:CreateButton(content, "Test Display", 0, yOffset, 100, function()
+        local ad = MithUI:GetModule("assistDisplay")
+        if ad then
+            -- Stop scanning so test stays visible
+            if ad.updateFrame then
+                ad.updateFrame:SetScript("OnUpdate", nil)
+            end
+        end
+        if MithUIAssistDisplay then
+            local f = MithUIAssistDisplay
+            f.icon:SetTexture(136048)
+            f.keybind:SetText("S-2")
+            f.spellName:SetText("Test Ability")
+            f.glow:Show()
+            f:Show()
+        end
+    end)
+    
+    -- Hide button
+    local hideBtn = self:CreateButton(content, "Hide", 110, yOffset, 50, function()
+        if MithUIAssistDisplay then
+            MithUIAssistDisplay:Hide()
+        end
+    end)
+    
+    -- Reset Position button
+    local resetBtn = self:CreateButton(content, "Reset Pos", 170, yOffset, 70, function()
+        adb.posX, adb.posY = 0, -250
+        if MithUIAssistDisplay then
+            MithUIAssistDisplay:ClearAllPoints()
+            MithUIAssistDisplay:SetPoint("CENTER", UIParent, "CENTER", 0, -250)
+        end
+        MithUI:Print("Position reset")
+    end)
+    yOffset = yOffset - 40
+    
+    -- Help text
+    local helpText = content:CreateFontString(nil, "OVERLAY")
+    helpText:SetFont("Fonts\\FRIZQT__.TTF", 9, "")
+    helpText:SetPoint("TOPLEFT", 0, yOffset)
+    helpText:SetWidth(400)
+    helpText:SetTextColor(unpack(COLORS.textDim))
+    helpText:SetText("Shows the Blizzard Assist highlighted ability in a larger frame.\nUnlock to drag it anywhere on screen.\nUse /ma for more options.")
 end
 
 function ConfigGUI:BuildVendorTab()
@@ -746,7 +973,7 @@ function ConfigGUI:CreateSlider(parent, label, x, y, minVal, maxVal, currentVal,
     return container
 end
 
--- UI Helper: Button
+-- UI Helper: Button - Warlock style
 function ConfigGUI:CreateButton(parent, label, x, y, width, onClick)
     local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
     btn:SetSize(width, 24)
@@ -756,7 +983,7 @@ function ConfigGUI:CreateButton(parent, label, x, y, width, onClick)
         edgeFile = "Interface\\Buttons\\WHITE8x8",
         edgeSize = 1,
     })
-    btn:SetBackdropColor(0.2, 0.2, 0.2, 1)
+    btn:SetBackdropColor(0.15, 0.05, 0.2, 1)  -- Dark purple
     btn:SetBackdropBorderColor(unpack(COLORS.border))
     
     local text = btn:CreateFontString(nil, "OVERLAY")
@@ -766,10 +993,14 @@ function ConfigGUI:CreateButton(parent, label, x, y, width, onClick)
     text:SetTextColor(unpack(COLORS.text))
     
     btn:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(0.3, 0.5, 0.7, 1)
+        self:SetBackdropColor(0.3, 0.1, 0.4, 1)  -- Brighter purple
+        self:SetBackdropBorderColor(0.4, 1, 0.3, 1)  -- Fel green border
+        text:SetTextColor(0.4, 1, 0.3)  -- Fel green text
     end)
     btn:SetScript("OnLeave", function(self)
-        self:SetBackdropColor(0.2, 0.2, 0.2, 1)
+        self:SetBackdropColor(0.15, 0.05, 0.2, 1)
+        self:SetBackdropBorderColor(unpack(COLORS.border))
+        text:SetTextColor(unpack(COLORS.text))
     end)
     btn:SetScript("OnClick", onClick)
     

@@ -1,5 +1,5 @@
 -- MithUI Radial Menu Module
--- OPie-style radial menu with scroll wheel ring switching
+-- Nested radial menu - scroll to select, release to cast
 
 local addonName, MithUI = ...
 
@@ -8,214 +8,458 @@ MithUI:RegisterModule("radialMenu", RadialMenu)
 
 local db
 local isOpen = false
-local currentRing = 1  -- Start at ring 1 (Mounts), scroll to switch
-local hoveredSlot = nil
 local centerX, centerY = 0, 0
+
+-- Selection state
+local activeCategory = nil       -- Which category is being browsed
+local selectedItemIndex = 1      -- Currently selected item in category
+local selectedItem = nil         -- The actual selected item data
 
 -- Main frame
 local frame = CreateFrame("Frame", "MithUIRadialMenu", UIParent)
 frame:SetFrameStrata("DIALOG")
 frame:SetFrameLevel(100)
-frame:SetSize(300, 300)
+frame:SetSize(400, 400)
 frame:SetPoint("CENTER")
 frame:Hide()
 
--- Ring name indicator in center
-local ringIndicator = frame:CreateFontString(nil, "OVERLAY")
-ringIndicator:SetFont("Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
-ringIndicator:SetPoint("CENTER", frame, "CENTER", 0, 0)
+-- Hidden button for keybinding
+local keybindButton = CreateFrame("Button", "MithUIRadialMenuButton", UIParent, "SecureActionButtonTemplate")
+keybindButton:SetSize(1, 1)
+keybindButton:SetPoint("CENTER")
+keybindButton:RegisterForClicks("AnyUp", "AnyDown")
 
--- Slot buttons
-local slots = {}
-local NUM_SLOTS = 12
+-- Center selection display (shows currently selected item)
+local selectionFrame = CreateFrame("Frame", nil, frame)
+selectionFrame:SetSize(60, 60)
+selectionFrame:SetPoint("CENTER")
 
--- Ring definitions
-local rings = {}
+selectionFrame.bg = selectionFrame:CreateTexture(nil, "BACKGROUND")
+selectionFrame.bg:SetAllPoints()
+selectionFrame.bg:SetColorTexture(0.1, 0.1, 0.1, 0.9)
 
--- Known hearthstone toy IDs
+selectionFrame.icon = selectionFrame:CreateTexture(nil, "ARTWORK")
+selectionFrame.icon:SetPoint("TOPLEFT", 4, -4)
+selectionFrame.icon:SetPoint("BOTTOMRIGHT", -4, 4)
+selectionFrame.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+selectionFrame.border = selectionFrame:CreateTexture(nil, "OVERLAY")
+selectionFrame.border:SetAllPoints()
+selectionFrame.border:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+selectionFrame.border:SetBlendMode("ADD")
+selectionFrame.border:SetVertexColor(1, 0.8, 0, 0.8)
+
+selectionFrame.text = selectionFrame:CreateFontString(nil, "OVERLAY")
+selectionFrame.text:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+selectionFrame.text:SetPoint("TOP", selectionFrame, "BOTTOM", 0, -4)
+selectionFrame.text:SetWidth(150)
+
+selectionFrame.scrollText = selectionFrame:CreateFontString(nil, "OVERLAY")
+selectionFrame.scrollText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
+selectionFrame.scrollText:SetPoint("TOP", selectionFrame.text, "BOTTOM", 0, -2)
+selectionFrame.scrollText:SetTextColor(0.6, 0.6, 0.6)
+
+-- Category slots (outer ring)
+local catSlots = {}
+local NUM_CAT_SLOTS = 8
+
+-- Categories data
+local categories = {}
+
+-- Hearthstone toys (comprehensive list)
 local HEARTHSTONE_TOYS = {
-    54452, 64488, 93672, 142542, 162973, 163045, 163206, 165669, 165670,
-    165802, 166746, 166747, 168907, 172179, 180290, 182773, 183716, 184353,
-    188952, 190196, 190237, 193588, 200630, 206195, 208704, 209035, 210455, 212337,
+    54452,   -- Ethereal Portal
+    64488,   -- The Innkeeper's Daughter
+    93672,   -- Dark Portal
+    142542,  -- Tome of Town Portal
+    162973,  -- Greatfather Winter's Hearthstone
+    163045,  -- Headless Horseman's Hearthstone
+    163206,  -- Weary Spirit Binding
+    165669,  -- Lunar Elder's Hearthstone
+    165670,  -- Peddlefeet's Lovely Hearthstone
+    165802,  -- Noble Gardener's Hearthstone
+    166746,  -- Fire Eater's Hearthstone
+    166747,  -- Brewfest Reveler's Hearthstone
+    168907,  -- Holographic Digitalization Hearthstone
+    172179,  -- Eternal Traveler's Hearthstone
+    180290,  -- Night Fae Hearthstone
+    182773,  -- Necrolord Hearthstone
+    183716,  -- Venthyr Sinstone
+    184353,  -- Kyrian Hearthstone
+    188952,  -- Dominated Hearthstone
+    190196,  -- Enlightened Hearthstone
+    190237,  -- Broker Translocation Matrix
+    193588,  -- Timewalker's Hearthstone
+    200630,  -- Ohn'ir Windsage's Hearthstone
+    206195,  -- Path of the Naaru
+    208704,  -- Deepdweller's Earthen Hearthstone
+    209035,  -- Hearthstone of the Flame
+    210455,  -- Draenic Hologem
+    212337,  -- Stone of the Hearth
+    208802,  -- Notorious Thread's Hearthstone
 }
 
--- Class spells
+-- Class teleport/utility spells by class
 local CLASS_SPELLS = {
-    DEATHKNIGHT = {"Death Gate"},
-    DRUID = {"Dreamwalk", "Teleport: Moonglade"},
-    MAGE = {"Teleport: Stormwind", "Teleport: Orgrimmar", "Teleport: Dalaran - Broken Isles"},
-    MONK = {"Zen Pilgrimage"},
-    SHAMAN = {"Astral Recall"},
-    WARLOCK = {"Ritual of Summoning", "Create Soulwell"},
+    DEATHKNIGHT = {
+        50977,   -- Death Gate
+    },
+    DRUID = {
+        18960,   -- Teleport: Moonglade
+        193753,  -- Dreamwalk
+    },
+    MAGE = {
+        3561,    -- Teleport: Stormwind
+        3562,    -- Teleport: Ironforge
+        3563,    -- Teleport: Undercity
+        3565,    -- Teleport: Darnassus
+        3566,    -- Teleport: Thunder Bluff
+        3567,    -- Teleport: Orgrimmar
+        32271,   -- Teleport: Exodar
+        32272,   -- Teleport: Silvermoon
+        33690,   -- Teleport: Shattrath (Alliance)
+        33691,   -- Teleport: Shattrath (Horde)
+        49358,   -- Teleport: Stonard
+        49359,   -- Teleport: Theramore
+        53140,   -- Teleport: Dalaran - Northrend
+        88342,   -- Teleport: Tol Barad (Alliance)
+        88344,   -- Teleport: Tol Barad (Horde)
+        120145,  -- Ancient Teleport: Dalaran
+        132621,  -- Teleport: Vale of Eternal Blossoms (Alliance)
+        132627,  -- Teleport: Vale of Eternal Blossoms (Horde)
+        176242,  -- Teleport: Warspear
+        176248,  -- Teleport: Stormshield
+        193759,  -- Teleport: Hall of the Guardian
+        224869,  -- Teleport: Dalaran - Broken Isles
+        281403,  -- Teleport: Boralus
+        281404,  -- Teleport: Dazar'alor
+        344587,  -- Teleport: Oribos
+        395277,  -- Teleport: Valdrakken
+        446540,  -- Teleport: Dornogal
+    },
+    MONK = {
+        126892,  -- Zen Pilgrimage
+        126895,  -- Zen Pilgrimage: Return
+    },
+    SHAMAN = {
+        556,     -- Astral Recall
+    },
+    WARLOCK = {
+        126,     -- Eye of Kilrogg
+        691,     -- Summon Felhunter
+        697,     -- Summon Voidwalker
+        688,     -- Summon Imp
+        712,     -- Summon Succubus
+        30146,   -- Summon Felguard
+        111771,  -- Demonic Gateway
+        698,     -- Ritual of Summoning
+    },
+    PRIEST = {
+        73325,   -- Leap of Faith
+    },
+    HUNTER = {
+        982,     -- Revive Pet
+        883,     -- Call Pet 1
+        83242,   -- Call Pet 2
+        83243,   -- Call Pet 3
+        83244,   -- Call Pet 4
+        83245,   -- Call Pet 5
+    },
 }
+
 
 function RadialMenu:OnInitialize()
     MithUI.defaults.radialMenu = {
         enabled = true,
         scale = 1.0,
-        ringRadius = 150,
-        buttonSize = 30,
-        useFavoriteMounts = true,
+        radius = 110,
+        buttonSize = 44,
+        centerSize = 60,
     }
 end
 
 function RadialMenu:OnEnable()
     db = MithUIDB.radialMenu
     C_Timer.After(2, function()
-        RadialMenu:BuildRings()
+        RadialMenu:BuildCategories()
         RadialMenu:CreateSlots()
     end)
 end
 
-function RadialMenu:BuildRings()
-    rings = {}
+function RadialMenu:BuildCategories()
+    categories = {}
     
-    -- Ring 1: Mounts
-    local mountRing = {
+    -- Category 1: Favorite Mounts
+    local mounts = {
         name = "Mounts",
+        icon = 413588,
         color = {0.6, 0.4, 1.0},
-        items = {{type = "mount", id = 0, name = "Random Favorite", icon = 413588}}
+        items = {}
     }
     
-    -- Get favorite mounts
+    -- Add random favorite first
+    table.insert(mounts.items, {
+        type = "mount", 
+        id = 0, 
+        name = "Random Favorite", 
+        icon = 413588
+    })
+    
+    -- Get ALL favorite mounts
     local mountIDs = C_MountJournal.GetMountIDs()
     if mountIDs then
         for _, mountID in ipairs(mountIDs) do
-            local name, spellID, icon, _, _, _, isFavorite, _, _, _, isCollected = C_MountJournal.GetMountInfoByID(mountID)
-            if isCollected and isFavorite then
-                table.insert(mountRing.items, {type = "mount", id = mountID, name = name, icon = icon})
+            local name, spellID, icon, isActive, isUsable, sourceType, isFavorite, 
+                  isFactionSpecific, faction, shouldHideOnChar, isCollected = C_MountJournal.GetMountInfoByID(mountID)
+            
+            if isCollected and isFavorite and not shouldHideOnChar then
+                table.insert(mounts.items, {
+                    type = "mount", 
+                    id = mountID, 
+                    name = name, 
+                    icon = icon,
+                    spellID = spellID
+                })
             end
         end
     end
-    table.insert(rings, mountRing)
     
-    -- Ring 2: Hearthstones
-    local hearthRing = {
-        name = "Hearthstones", 
+    if #mounts.items > 0 then
+        table.insert(categories, mounts)
+    end
+    
+    -- Category 2: Hearthstones
+    local hearths = {
+        name = "Hearthstones",
+        icon = 134414,
         color = {0.3, 0.8, 0.5},
         items = {}
     }
     
-    -- Regular hearthstone
-    if C_Item.GetItemCount(6948) > 0 then
-        table.insert(hearthRing.items, {type = "item", id = 6948, name = "Hearthstone", icon = 134414})
+    -- Regular hearthstone (check if in bags)
+    local hearthCount = C_Item.GetItemCount(6948)
+    if hearthCount and hearthCount > 0 then
+        local itemName, _, _, _, _, _, _, _, _, itemIcon = C_Item.GetItemInfo(6948)
+        table.insert(hearths.items, {
+            type = "item", 
+            id = 6948, 
+            name = itemName or "Hearthstone", 
+            icon = itemIcon or 134414
+        })
     end
-    -- Dalaran HS
-    if C_Item.GetItemCount(140192) > 0 then
-        table.insert(hearthRing.items, {type = "item", id = 140192, name = "Dalaran Hearthstone", icon = 1041860})
-    end
-    -- Garrison HS  
-    if C_Item.GetItemCount(110560) > 0 then
-        table.insert(hearthRing.items, {type = "item", id = 110560, name = "Garrison Hearthstone", icon = 1041860})
-    end
-    -- Hearthstone toys
-    for _, toyID in ipairs(HEARTHSTONE_TOYS) do
-        if PlayerHasToy(toyID) then
-            local _, toyName, icon = C_ToyBox.GetToyInfo(toyID)
-            if toyName then
-                table.insert(hearthRing.items, {type = "toy", id = toyID, name = toyName, icon = icon})
-            end
-        end
-    end
-    table.insert(rings, hearthRing)
     
-    -- Ring 3: Class abilities
-    local _, playerClass = UnitClass("player")
-    local classSpells = CLASS_SPELLS[playerClass]
-    if classSpells then
-        local classRing = {name = "Class", color = {1.0, 0.5, 0.3}, items = {}}
-        for _, spellName in ipairs(classSpells) do
-            local spellInfo = C_Spell.GetSpellInfo(spellName)
-            if spellInfo and (IsSpellKnown(spellInfo.spellID) or IsPlayerSpell(spellInfo.spellID)) then
-                table.insert(classRing.items, {type = "spell", id = spellInfo.spellID, name = spellInfo.name, icon = spellInfo.iconID})
+    -- Dalaran Hearthstone
+    local dalHS = C_Item.GetItemCount(140192)
+    if dalHS and dalHS > 0 then
+        local itemName, _, _, _, _, _, _, _, _, itemIcon = C_Item.GetItemInfo(140192)
+        table.insert(hearths.items, {
+            type = "item", 
+            id = 140192, 
+            name = itemName or "Dalaran Hearthstone", 
+            icon = itemIcon or 1041860
+        })
+    end
+    
+    -- Garrison Hearthstone
+    local garHS = C_Item.GetItemCount(110560)
+    if garHS and garHS > 0 then
+        local itemName, _, _, _, _, _, _, _, _, itemIcon = C_Item.GetItemInfo(110560)
+        table.insert(hearths.items, {
+            type = "item", 
+            id = 110560, 
+            name = itemName or "Garrison Hearthstone", 
+            icon = itemIcon or 1041860
+        })
+    end
+    
+    -- Check hearthstone toys
+    for _, toyID in ipairs(HEARTHSTONE_TOYS) do
+        if PlayerHasToy and PlayerHasToy(toyID) then
+            local itemID, toyName, icon = C_ToyBox.GetToyInfo(toyID)
+            if toyName and icon then
+                table.insert(hearths.items, {
+                    type = "toy", 
+                    id = toyID, 
+                    name = toyName, 
+                    icon = icon
+                })
             end
         end
-        if #classRing.items > 0 then
-            table.insert(rings, classRing)
-        end
     end
+    
+    if #hearths.items > 0 then
+        table.insert(categories, hearths)
+    end
+    
+    -- Note: Class spells removed - they require secure action buttons
+    -- which cannot be dynamically configured outside of combat
 end
+
 
 function RadialMenu:CreateSlots()
     local buttonSize = db.buttonSize or 44
     
-    for i = 1, NUM_SLOTS do
-        if not slots[i] then
-            local slot = CreateFrame("Button", "MithUIRadialSlot"..i, frame, "SecureActionButtonTemplate")
+    for i = 1, NUM_CAT_SLOTS do
+        if not catSlots[i] then
+            local slot = CreateFrame("Button", "MithUIRadialCat"..i, frame)
             slot:SetSize(buttonSize, buttonSize)
+            slot.slotIndex = i
             
-            -- Background
             slot.bg = slot:CreateTexture(nil, "BACKGROUND")
             slot.bg:SetAllPoints()
             slot.bg:SetColorTexture(0.1, 0.1, 0.1, 0.85)
             
-            -- Icon
             slot.icon = slot:CreateTexture(nil, "ARTWORK")
             slot.icon:SetPoint("TOPLEFT", 3, -3)
             slot.icon:SetPoint("BOTTOMRIGHT", -3, 3)
             slot.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
             
-            -- Border
             slot.border = CreateFrame("Frame", nil, slot, "BackdropTemplate")
             slot.border:SetAllPoints()
             slot.border:SetBackdrop({edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2})
-            slot.border:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+            slot.border:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
             
-            -- Highlight on hover
+            -- Item count
+            slot.count = slot:CreateFontString(nil, "OVERLAY")
+            slot.count:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+            slot.count:SetPoint("BOTTOMRIGHT", -2, 2)
+            
             slot:SetScript("OnEnter", function(self)
-                self.border:SetBackdropBorderColor(1, 0.8, 0, 1)
-                self:SetScale(1.15)
-                if self.tooltipText then
-                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                    GameTooltip:SetText(self.tooltipText, 1, 1, 1)
-                    GameTooltip:Show()
-                end
+                RadialMenu:OnCategoryEnter(self)
             end)
             
             slot:SetScript("OnLeave", function(self)
-                local ring = rings[currentRing]
-                if ring then
-                    local r, g, b = unpack(ring.color)
-                    self.border:SetBackdropBorderColor(r * 0.8, g * 0.8, b * 0.8, 1)
-                end
-                self:SetScale(1.0)
-                GameTooltip:Hide()
+                RadialMenu:OnCategoryLeave(self)
             end)
             
-            slots[i] = slot
+            slot:EnableMouseWheel(true)
+            slot:SetScript("OnMouseWheel", function(self, delta)
+                RadialMenu:OnScroll(delta)
+            end)
+            
+            catSlots[i] = slot
         end
-        slots[i]:SetSize(buttonSize, buttonSize)
-        slots[i]:Hide()
+        catSlots[i]:SetSize(buttonSize, buttonSize)
+        catSlots[i]:Hide()
     end
 end
 
-function RadialMenu:UpdateRing()
-    local ring = rings[currentRing]
-    if not ring then return end
+function RadialMenu:OnCategoryEnter(slot)
+    local catIndex = slot.categoryIndex
+    if not catIndex or not categories[catIndex] then return end
     
-    -- Update center text
-    ringIndicator:SetText(ring.name .. " (" .. currentRing .. "/" .. #rings .. ")")
-    local r, g, b = unpack(ring.color)
-    ringIndicator:SetTextColor(r, g, b)
+    local cat = categories[catIndex]
+    local r, g, b = unpack(cat.color)
     
-    -- Hide all slots first
-    for i = 1, NUM_SLOTS do
-        slots[i]:Hide()
+    -- Highlight
+    slot.border:SetBackdropBorderColor(1, 0.8, 0, 1)
+    slot:SetScale(1.1)
+    
+    -- Set this as active category
+    activeCategory = catIndex
+    selectedItemIndex = 1
+    
+    -- Update center to show first item
+    self:UpdateSelection()
+    
+    -- Tooltip
+    GameTooltip:SetOwner(slot, "ANCHOR_RIGHT")
+    GameTooltip:SetText(cat.name, r, g, b)
+    GameTooltip:AddLine(#cat.items .. " items - scroll to select", 0.7, 0.7, 0.7)
+    GameTooltip:Show()
+end
+
+function RadialMenu:OnCategoryLeave(slot)
+    local catIndex = slot.categoryIndex
+    if catIndex and categories[catIndex] then
+        local r, g, b = unpack(categories[catIndex].color)
+        slot.border:SetBackdropBorderColor(r * 0.6, g * 0.6, b * 0.6, 1)
+    end
+    slot:SetScale(1.0)
+    GameTooltip:Hide()
+end
+
+function RadialMenu:OnScroll(delta)
+    if not activeCategory then return end
+    
+    local cat = categories[activeCategory]
+    if not cat or #cat.items == 0 then return end
+    
+    if delta > 0 then
+        selectedItemIndex = selectedItemIndex - 1
+        if selectedItemIndex < 1 then
+            selectedItemIndex = #cat.items
+        end
+    else
+        selectedItemIndex = selectedItemIndex + 1
+        if selectedItemIndex > #cat.items then
+            selectedItemIndex = 1
+        end
     end
     
-    local items = ring.items
-    local numItems = #items
-    if numItems == 0 then return end
+    self:UpdateSelection()
+end
+
+function RadialMenu:UpdateSelection()
+    if not activeCategory then
+        selectionFrame.icon:SetTexture(134400)
+        selectionFrame.text:SetText("Hover a category")
+        selectionFrame.scrollText:SetText("")
+        selectedItem = nil
+        self:ConfigureSecureButton()
+        return
+    end
     
-    local radius = db.ringRadius or 100
+    local cat = categories[activeCategory]
+    if not cat or #cat.items == 0 then return end
+    
+    local item = cat.items[selectedItemIndex]
+    if not item then return end
+    
+    selectedItem = item
+    
+    local r, g, b = unpack(cat.color)
+    
+    -- Update center display
+    selectionFrame.icon:SetTexture(item.icon or 134400)
+    selectionFrame.text:SetText(item.name)
+    selectionFrame.text:SetTextColor(r, g, b)
+    selectionFrame.border:SetVertexColor(r, g, b, 0.8)
+    
+    -- Scroll indicator
+    selectionFrame.scrollText:SetText(selectedItemIndex .. " / " .. #cat.items)
+    
+    -- Also update the category slot icon to show current selection
+    for i = 1, NUM_CAT_SLOTS do
+        if catSlots[i].categoryIndex == activeCategory then
+            catSlots[i].icon:SetTexture(item.icon or 134400)
+            break
+        end
+    end
+    
+    -- Configure secure button for this item (for items that need it)
+    self:ConfigureSecureButton()
+end
+
+function RadialMenu:UpdateCategoryRing()
+    for i = 1, NUM_CAT_SLOTS do
+        catSlots[i]:Hide()
+    end
+    
+    local numCats = #categories
+    if numCats == 0 then
+        selectionFrame.text:SetText("No items found")
+        return
+    end
+    
+    local radius = db.radius or 110
     local buttonSize = db.buttonSize or 44
     
-    -- Position items in a circle
-    for i, item in ipairs(items) do
-        if i > NUM_SLOTS then break end
+    for i, cat in ipairs(categories) do
+        if i > NUM_CAT_SLOTS then break end
         
-        local slot = slots[i]
-        local angle = ((i - 1) / numItems) * 360 - 90  -- Start from top
+        local slot = catSlots[i]
+        local angle = ((i - 1) / numCats) * 360 - 90
         local rad = math.rad(angle)
         local x = math.cos(rad) * radius
         local y = math.sin(rad) * radius
@@ -224,34 +468,72 @@ function RadialMenu:UpdateRing()
         slot:SetPoint("CENTER", frame, "CENTER", x, y)
         slot:SetSize(buttonSize, buttonSize)
         
-        -- Configure the slot
-        slot.tooltipText = item.name
-        slot.icon:SetTexture(item.icon or 134400)
+        slot.categoryIndex = i
+        slot.icon:SetTexture(cat.icon or 134400)
         
-        -- Set up click action
-        slot:SetAttribute("type", nil)
-        slot:SetAttribute("spell", nil)
-        slot:SetAttribute("item", nil)
-        slot:SetAttribute("toy", nil)
-        slot:SetAttribute("macrotext", nil)
+        local r, g, b = unpack(cat.color)
+        slot.border:SetBackdropBorderColor(r * 0.6, g * 0.6, b * 0.6, 1)
+        slot.count:SetText(#cat.items)
+        slot.count:SetTextColor(r, g, b)
         
-        if item.type == "spell" then
-            slot:SetAttribute("type", "spell")
-            slot:SetAttribute("spell", item.id)
-        elseif item.type == "item" then
-            slot:SetAttribute("type", "item")
-            slot:SetAttribute("item", "item:" .. item.id)
-        elseif item.type == "toy" then
-            slot:SetAttribute("type", "toy")
-            slot:SetAttribute("toy", item.id)
-        elseif item.type == "mount" then
-            slot:SetAttribute("type", "macro")
-            slot:SetAttribute("macrotext", "/run C_MountJournal.SummonByID(" .. item.id .. ")")
-        end
-        
-        -- Border color
-        slot.border:SetBackdropBorderColor(r * 0.8, g * 0.8, b * 0.8, 1)
         slot:Show()
+    end
+    
+    selectionFrame.text:SetText("Hover & scroll")
+    selectionFrame.text:SetTextColor(0.7, 0.7, 0.7)
+    selectionFrame.scrollText:SetText("")
+    selectionFrame.icon:SetTexture(134400)
+end
+
+
+function RadialMenu:UseSelectedItem()
+    if not selectedItem then return end
+    
+    local item = selectedItem
+    
+    if item.type == "toy" then
+        C_ToyBox.UseToy(item.id)
+    elseif item.type == "mount" then
+        if item.id == 0 then
+            C_MountJournal.SummonByID(0)  -- Random favorite
+        else
+            C_MountJournal.SummonByID(item.id)
+        end
+    elseif item.type == "item" then
+        -- Items need secure button - already configured in UpdateSelection
+        -- The keybindButton will handle it
+    end
+end
+
+function RadialMenu:ConfigureSecureButton()
+    if InCombatLockdown() then return end
+    
+    if not selectedItem then
+        keybindButton:SetAttribute("type", nil)
+        return
+    end
+    
+    local item = selectedItem
+    
+    keybindButton:SetAttribute("type", nil)
+    keybindButton:SetAttribute("spell", nil)
+    keybindButton:SetAttribute("item", nil)
+    keybindButton:SetAttribute("toy", nil)
+    keybindButton:SetAttribute("macrotext", nil)
+    
+    if item.type == "item" then
+        keybindButton:SetAttribute("type", "item")
+        keybindButton:SetAttribute("item", "item:" .. item.id)
+    elseif item.type == "toy" then
+        keybindButton:SetAttribute("type", "toy")
+        keybindButton:SetAttribute("toy", item.id)
+    elseif item.type == "mount" then
+        keybindButton:SetAttribute("type", "macro")
+        if item.id == 0 then
+            keybindButton:SetAttribute("macrotext", "/run C_MountJournal.SummonByID(0)")
+        else
+            keybindButton:SetAttribute("macrotext", "/run C_MountJournal.SummonByID(" .. item.id .. ")")
+        end
     end
 end
 
@@ -261,9 +543,8 @@ function RadialMenu:Open()
         return
     end
     
-    self:BuildRings()
+    self:BuildCategories()
     
-    -- Center on cursor
     local x, y = GetCursorPosition()
     local scale = UIParent:GetEffectiveScale()
     centerX = x / scale
@@ -273,62 +554,90 @@ function RadialMenu:Open()
     frame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
     frame:SetScale(db.scale or 1.0)
     
-    self:UpdateRing()
+    activeCategory = nil
+    selectedItemIndex = 1
+    selectedItem = nil
+    
+    self:UpdateCategoryRing()
     frame:Show()
     isOpen = true
 end
 
-function RadialMenu:Close()
+function RadialMenu:Close(useItem)
+    -- useItem parameter kept for compatibility but mounts/toys handled in keybind OnClick
+    -- items handled via secure button attributes
+    
     frame:Hide()
     isOpen = false
-    for i = 1, NUM_SLOTS do
-        slots[i]:SetScale(1.0)
+    activeCategory = nil
+    selectedItem = nil
+    
+    for i = 1, NUM_CAT_SLOTS do
+        catSlots[i]:SetScale(1.0)
     end
+    GameTooltip:Hide()
 end
 
 function RadialMenu:Toggle()
     if isOpen then
-        self:Close()
+        self:Close(false)
     else
         self:Open()
     end
 end
 
-function RadialMenu:NextRing()
-    currentRing = currentRing + 1
-    if currentRing > #rings then currentRing = 1 end
-    self:UpdateRing()
-end
-
-function RadialMenu:PrevRing()
-    currentRing = currentRing - 1
-    if currentRing < 1 then currentRing = #rings end
-    self:UpdateRing()
-end
-
-function RadialMenu:OpenRing(ringNum)
-    if ringNum and ringNum >= 1 and ringNum <= #rings then
-        currentRing = ringNum
-    end
-    self:Open()
-end
-
--- Scroll wheel to change rings
-frame:EnableMouseWheel(true)
-frame:SetScript("OnMouseWheel", function(self, delta)
-    if delta > 0 then
-        RadialMenu:NextRing()
+-- Keybind button - hold to open, release to use
+-- The secure button handles items via attributes set in ConfigureSecureButton
+-- Mounts and toys are handled via UseSelectedItem since they work with API calls
+keybindButton:SetScript("OnClick", function(self, button, down)
+    if down then
+        RadialMenu:Open()
     else
-        RadialMenu:PrevRing()
+        -- Release = close menu
+        -- For items: the secure button attributes will fire automatically
+        -- For mounts/toys: we call UseSelectedItem
+        if selectedItem and (selectedItem.type == "mount" or selectedItem.type == "toy") then
+            RadialMenu:UseSelectedItem()
+        end
+        RadialMenu:Close(false)
     end
 end)
 
--- Right click or ESC to close
+-- Scroll on main frame
+frame:EnableMouseWheel(true)
+frame:SetScript("OnMouseWheel", function(self, delta)
+    RadialMenu:OnScroll(delta)
+end)
+
+-- Right click to close without using
 frame:EnableMouse(true)
 frame:SetScript("OnMouseDown", function(self, button)
     if button == "RightButton" then
-        RadialMenu:Close()
+        RadialMenu:Close(false)
+    elseif button == "LeftButton" then
+        -- Left click = use and close
+        if selectedItem and (selectedItem.type == "mount" or selectedItem.type == "toy") then
+            RadialMenu:UseSelectedItem()
+        end
+        RadialMenu:Close(false)
     end
+end)
+
+-- Make center clickable
+selectionFrame:EnableMouse(true)
+selectionFrame:SetScript("OnMouseDown", function(self, button)
+    if button == "LeftButton" then
+        if selectedItem and (selectedItem.type == "mount" or selectedItem.type == "toy") then
+            RadialMenu:UseSelectedItem()
+        end
+        RadialMenu:Close(false)
+    elseif button == "RightButton" then
+        RadialMenu:Close(false)
+    end
+end)
+selectionFrame:EnableMouseWheel(true)
+selectionFrame:SetScript("OnMouseWheel", function(self, delta)
+    RadialMenu:OnScroll(delta)
 end)
 
 -- Slash commands
@@ -340,23 +649,36 @@ SlashCmdList["MITHPIE"] = function(msg)
     local cmd = args[1]
     if not cmd or cmd == "" then
         RadialMenu:Toggle()
-    elseif cmd == "mounts" then
-        RadialMenu:OpenRing(1)
-    elseif cmd == "hearth" then
-        RadialMenu:OpenRing(2)
-    elseif cmd == "class" then
-        RadialMenu:OpenRing(3)
     elseif cmd == "refresh" then
-        RadialMenu:BuildRings()
-        MithUI:Print("Rings refreshed")
+        RadialMenu:BuildCategories()
+        if isOpen then RadialMenu:UpdateCategoryRing() end
+        MithUI:Print("Categories refreshed: " .. #categories .. " found")
+        for i, cat in ipairs(categories) do
+            print("  " .. cat.name .. ": " .. #cat.items .. " items")
+        end
     elseif cmd == "scale" then
         local s = tonumber(args[2])
-        if s then db.scale = s; frame:SetScale(s) end
+        if s then 
+            db.scale = s
+            frame:SetScale(s)
+        end
     elseif cmd == "radius" then
         local r = tonumber(args[2])
-        if r then db.ringRadius = r; RadialMenu:UpdateRing() end
+        if r then 
+            db.radius = r
+            if isOpen then RadialMenu:UpdateCategoryRing() end
+        end
+    elseif cmd == "debug" then
+        MithUI:Print("Debug info:")
+        print("  Categories: " .. #categories)
+        for i, cat in ipairs(categories) do
+            print("  [" .. i .. "] " .. cat.name .. ": " .. #cat.items .. " items")
+        end
+        print("  Active: " .. tostring(activeCategory))
+        print("  Selected: " .. tostring(selectedItemIndex))
     else
-        MithUI:Print("Radial Menu: /mp [mounts|hearth|class|refresh]")
-        print("  Scroll wheel changes rings when open")
+        MithUI:Print("Radial Menu: /mp [refresh|scale|radius|debug]")
+        print("  Hold keybind to open, scroll to select, release to use")
+        print("  Right-click to cancel")
     end
 end

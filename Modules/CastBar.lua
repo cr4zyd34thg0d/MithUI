@@ -57,70 +57,54 @@ function CastBar:CreateFrames()
     frame:SetScale(db.scale or 1.0)
     frame:SetPoint("CENTER", UIParent, "CENTER", db.posX, db.posY)
     
-    -- Background
+    -- Background (dark, subtle)
     if not frame.bg then
         frame.bg = frame:CreateTexture(nil, "BACKGROUND")
     end
     frame.bg:SetAllPoints()
-    frame.bg:SetColorTexture(unpack(db.bgColor))
+    frame.bg:SetColorTexture(0, 0, 0, 0.7)
     
-    -- Border
-    if not frame.border then
-        frame.border = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-    end
-    frame.border:SetPoint("TOPLEFT", -2, 2)
-    frame.border:SetPoint("BOTTOMRIGHT", 2, -2)
-    frame.border:SetBackdrop({
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 1,
-    })
-    frame.border:SetBackdropBorderColor(unpack(db.borderColor))
-    
-    -- Status bar
+    -- Status bar (no border frame needed)
     if not frame.bar then
         frame.bar = CreateFrame("StatusBar", nil, frame)
     end
-    frame.bar:SetPoint("TOPLEFT", 2, -2)
-    frame.bar:SetPoint("BOTTOMRIGHT", -2, 2)
+    frame.bar:SetAllPoints()
     frame.bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8x8")
     frame.bar:SetStatusBarColor(unpack(db.barColor))
     frame.bar:SetMinMaxValues(0, 1)
     frame.bar:SetValue(0)
     
-    -- Spark
+    -- Spark (subtle glow at progress point)
     if not frame.spark then
         frame.spark = frame.bar:CreateTexture(nil, "OVERLAY")
     end
     frame.spark:SetTexture("Interface\\CastingBar\\UI-CastingBar-Spark")
-    frame.spark:SetSize(20, db.height + 10)
+    frame.spark:SetSize(16, db.height + 6)
     frame.spark:SetBlendMode("ADD")
     frame.spark:SetPoint("CENTER", frame.bar:GetStatusBarTexture(), "RIGHT", 0, 0)
     
-    -- Icon
+    -- Icon (clean, no border)
     if db.showIcon then
         if not frame.icon then
             frame.icon = frame:CreateTexture(nil, "ARTWORK")
         end
-        frame.icon:SetSize(db.iconSize, db.iconSize)
+        frame.icon:SetSize(db.height, db.height)  -- Square, match bar height
         frame.icon:SetPoint("RIGHT", frame, "LEFT", -4, 0)
         frame.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         frame.icon:Show()
         
-        -- Icon border
-        if not frame.iconBorder then
-            frame.iconBorder = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+        -- Remove icon border if it exists
+        if frame.iconBorder then
+            frame.iconBorder:Hide()
         end
-        frame.iconBorder:SetPoint("TOPLEFT", frame.icon, "TOPLEFT", -2, 2)
-        frame.iconBorder:SetPoint("BOTTOMRIGHT", frame.icon, "BOTTOMRIGHT", 2, -2)
-        frame.iconBorder:SetBackdrop({
-            edgeFile = "Interface\\Buttons\\WHITE8x8",
-            edgeSize = 1,
-        })
-        frame.iconBorder:SetBackdropBorderColor(unpack(db.borderColor))
-        frame.iconBorder:Show()
     else
         if frame.icon then frame.icon:Hide() end
         if frame.iconBorder then frame.iconBorder:Hide() end
+    end
+    
+    -- Remove old border frame if it exists
+    if frame.border then
+        frame.border:Hide()
     end
     
     -- Spell name
@@ -128,8 +112,9 @@ function CastBar:CreateFrames()
         frame.spellText = frame.bar:CreateFontString(nil, "OVERLAY")
     end
     frame.spellText:SetFont("Fonts\\FRIZQT__.TTF", db.fontSize, "OUTLINE")
-    frame.spellText:SetPoint("LEFT", frame.bar, "LEFT", 4, 0)
+    frame.spellText:SetPoint("LEFT", frame.bar, "LEFT", 6, 0)
     frame.spellText:SetJustifyH("LEFT")
+    frame.spellText:SetTextColor(1, 1, 1)
     if db.showSpellName then
         frame.spellText:Show()
     else
@@ -141,8 +126,9 @@ function CastBar:CreateFrames()
         frame.timerText = frame.bar:CreateFontString(nil, "OVERLAY")
     end
     frame.timerText:SetFont("Fonts\\FRIZQT__.TTF", db.fontSize, "OUTLINE")
-    frame.timerText:SetPoint("RIGHT", frame.bar, "RIGHT", -4, 0)
+    frame.timerText:SetPoint("RIGHT", frame.bar, "RIGHT", -6, 0)
     frame.timerText:SetJustifyH("RIGHT")
+    frame.timerText:SetTextColor(1, 1, 1)
     if db.showTimer then
         frame.timerText:Show()
     else

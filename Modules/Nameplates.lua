@@ -91,15 +91,15 @@ function Nameplates:RegisterEvents()
     
     events:SetScript("OnEvent", function(self, event, unit, ...)
         if event == "NAME_PLATE_UNIT_ADDED" then
-            Nameplates:OnNameplateAdded(unit)
+            pcall(Nameplates.OnNameplateAdded, Nameplates, unit)
         elseif event == "NAME_PLATE_UNIT_REMOVED" then
-            Nameplates:OnNameplateRemoved(unit)
+            pcall(Nameplates.OnNameplateRemoved, Nameplates, unit)
         elseif event == "PLAYER_TARGET_CHANGED" then
-            Nameplates:UpdateAllTargets()
+            pcall(Nameplates.UpdateAllTargets, Nameplates)
         elseif event == "UNIT_THREAT_LIST_UPDATE" or event == "UNIT_HEALTH" then
-            Nameplates:UpdateUnit(unit)
+            pcall(Nameplates.UpdateUnit, Nameplates, unit)
         elseif event:match("SPELLCAST") then
-            Nameplates:UpdateCastBar(unit)
+            pcall(Nameplates.UpdateCastBar, Nameplates, unit)
         end
     end)
 end
@@ -168,37 +168,70 @@ function Nameplates:ModifyNameplate(nameplate, unit)
 end
 
 function Nameplates:GetHealthBar(nameplate)
-    -- Try different paths for the health bar
-    if nameplate.UnitFrame and nameplate.UnitFrame.healthBar then
-        return nameplate.UnitFrame.healthBar
-    elseif nameplate.UnitFrame and nameplate.UnitFrame.HealthBar then
-        return nameplate.UnitFrame.HealthBar
-    elseif nameplate.UnitFrame and nameplate.UnitFrame.Health then
-        return nameplate.UnitFrame.Health
-    end
+    -- Try different paths for the health bar (WoW 12.0 Midnight compatibility)
     
-    -- Search children for a StatusBar
-    for _, child in pairs({nameplate:GetChildren()}) do
-        if child.healthBar then return child.healthBar end
-        if child.HealthBar then return child.HealthBar end
-        -- Check grandchildren
-        for _, grandchild in pairs({child:GetChildren()}) do
-            if grandchild:IsObjectType("StatusBar") then
-                return grandchild
+    -- Standard Blizzard nameplate structure
+    if nameplate.UnitFrame then
+        local uf = nameplate.UnitFrame
+        if uf.healthBar then return uf.healthBar end
+        if uf.HealthBar then return uf.HealthBar end
+        if uf.Health then return uf.Health end
+        if uf.HealthBarsContainer then
+            -- TWW/Midnight structure
+            local container = uf.HealthBarsContainer
+            if container.healthBar then return container.healthBar end
+            for _, child in pairs({container:GetChildren()}) do
+                if child:IsObjectType("StatusBar") then
+                    return child
+                end
             end
         end
     end
     
-    return nil
+    -- Search children recursively
+    local function FindHealthBar(frame, depth)
+        if depth > 4 then return nil end
+        for _, child in pairs({frame:GetChildren()}) do
+            if child:IsObjectType("StatusBar") then
+                local name = child:GetName() or ""
+                if name:lower():match("health") or child.GetStatusBarTexture then
+                    return child
+                end
+            end
+            local found = FindHealthBar(child, depth + 1)
+            if found then return found end
+        end
+        return nil
+    end
+    
+    return FindHealthBar(nameplate, 0)
 end
 
 function Nameplates:GetCastBar(nameplate)
-    if nameplate.UnitFrame and nameplate.UnitFrame.castBar then
-        return nameplate.UnitFrame.castBar
-    elseif nameplate.UnitFrame and nameplate.UnitFrame.CastBar then
-        return nameplate.UnitFrame.CastBar
+    if nameplate.UnitFrame then
+        local uf = nameplate.UnitFrame
+        if uf.castBar then return uf.castBar end
+        if uf.CastBar then return uf.CastBar end
+        if uf.SpellBar then return uf.SpellBar end
     end
-    return nil
+    
+    -- Search for cast bar
+    local function FindCastBar(frame, depth)
+        if depth > 4 then return nil end
+        for _, child in pairs({frame:GetChildren()}) do
+            local name = child:GetName() or ""
+            if name:lower():match("cast") or name:lower():match("spell") then
+                if child:IsObjectType("StatusBar") then
+                    return child
+                end
+            end
+            local found = FindCastBar(child, depth + 1)
+            if found then return found end
+        end
+        return nil
+    end
+    
+    return FindCastBar(nameplate, 0)
 end
 
 function Nameplates:UpdateColor(nameplate, unit)
@@ -253,34 +286,45 @@ function Nameplates:UpdateColor(nameplate, unit)
 end
 
 function Nameplates:IsQuestMob(unit)
-    if not unit or UnitIsPlayer(unit) then return false end
+    if not unit then return false end
+    
+    local ok, isPlayer = pcall(UnitIsPlayer, unit)
+    if ok and isPlayer then return false end
     
     -- Check for quest boss classification
-    local classification = UnitClassification(unit)
-    if classification == "questboss" then return true end
+    local ok2, classification = pcall(UnitClassification, unit)
+    if ok2 and classification == "questboss" then return true end
+    
+    -- Skip tooltip scanning in combat to avoid errors
+    if InCombatLockdown() then return false end
     
     -- Check tooltip for quest progress text
     local tooltip = _G["MithUIQuestTooltip"]
     if not tooltip then
-        tooltip = CreateFrame("GameTooltip", "MithUIQuestTooltip", nil, "GameTooltipTemplate")
+        local ok3, tt = pcall(CreateFrame, "GameTooltip", "MithUIQuestTooltip", nil, "GameTooltipTemplate")
+        if ok3 then tooltip = tt else return false end
     end
     
-    tooltip:SetOwner(WorldFrame, "ANCHOR_NONE")
-    tooltip:SetUnit(unit)
+    local ok4 = pcall(function()
+        tooltip:SetOwner(WorldFrame, "ANCHOR_NONE")
+        tooltip:SetUnit(unit)
+    end)
+    if not ok4 then return false end
     
+    local isQuest = false
     for i = 1, tooltip:NumLines() do
         local line = _G["MithUIQuestTooltipTextLeft" .. i]
         if line then
-            local text = line:GetText()
-            if text and (text:match("%d+/%d+") or text:match("Quest")) then
-                tooltip:Hide()
-                return true
+            local ok5, text = pcall(function() return line:GetText() end)
+            if ok5 and text and (text:match("%d+/%d+") or text:match("Quest")) then
+                isQuest = true
+                break
             end
         end
     end
     
-    tooltip:Hide()
-    return false
+    pcall(function() tooltip:Hide() end)
+    return isQuest
 end
 
 function Nameplates:AddQuestIndicator(nameplate, unit)
@@ -494,6 +538,26 @@ SlashCmdList["MITHPLATES"] = function(msg)
             end
         end
         MithUI:Print("Nameplates refreshed")
+        
+    elseif cmd == "debug" then
+        MithUI:Print("Nameplate debug:")
+        print("  Enabled: " .. tostring(db.enabled))
+        local plates = C_NamePlate.GetNamePlates()
+        print("  Active nameplates: " .. #plates)
+        for i, nameplate in ipairs(plates) do
+            local unit = nameplate.namePlateUnitToken
+            local name = unit and UnitName(unit) or "unknown"
+            local healthBar = Nameplates:GetHealthBar(nameplate)
+            local castBar = Nameplates:GetCastBar(nameplate)
+            print("  [" .. i .. "] " .. name .. " - HP bar: " .. tostring(healthBar ~= nil) .. ", Cast bar: " .. tostring(castBar ~= nil))
+            if nameplate.UnitFrame then
+                print("      UnitFrame exists, children:")
+                for _, child in pairs({nameplate.UnitFrame:GetChildren()}) do
+                    local cname = child:GetName() or child:GetObjectType()
+                    print("        - " .. cname)
+                end
+            end
+        end
         
     else
         MithUI:Print("Nameplate commands:")
