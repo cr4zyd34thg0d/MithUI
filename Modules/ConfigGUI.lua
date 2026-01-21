@@ -180,10 +180,16 @@ function ConfigGUI:RefreshTab()
         end
     end
     
-    -- Clear content
+    -- Clear content - frames
     for _, child in pairs({mainFrame.content:GetChildren()}) do
         child:Hide()
         child:SetParent(nil)
+    end
+    
+    -- Clear content - regions (textures, fontstrings)
+    for _, region in pairs({mainFrame.content:GetRegions()}) do
+        region:Hide()
+        region:SetParent(nil)
     end
     
     -- Build tab content
@@ -336,17 +342,26 @@ function ConfigGUI:BuildRadialMenuTab()
     yOffset = yOffset - 50
     
     -- Open menu button
-    local openBtn = self:CreateButton(content, "Open Menu", 0, yOffset, 120, function()
+    local openBtn = self:CreateButton(content, "Test Menu", 0, yOffset, 100, function()
         local rm = MithUI:GetModule("radialMenu")
         if rm then rm:Toggle() end
     end)
     
+    -- Open keybindings button
+    local keybindBtn = self:CreateButton(content, "Set Keybind", 110, yOffset, 100, function()
+        -- Open WoW's keybinding UI to the MithUI section
+        Settings.OpenToCategory(Settings.KEYBINDINGS_CATEGORY_ID)
+    end)
+    yOffset = yOffset - 40
+    
     -- Help text
     local helpText = content:CreateFontString(nil, "OVERLAY")
-    helpText:SetFont("Fonts\\FRIZQT__.TTF", 9, "")
-    helpText:SetPoint("TOPLEFT", 0, yOffset - 40)
+    helpText:SetFont("Fonts\\FRIZQT__.TTF", 10, "")
+    helpText:SetPoint("TOPLEFT", 0, yOffset)
+    helpText:SetWidth(400)
+    helpText:SetJustifyH("LEFT")
     helpText:SetTextColor(unpack(COLORS.textDim))
-    helpText:SetText("Use /mp to toggle menu\nScroll wheel changes rings")
+    helpText:SetText("Keybind: Key Bindings > Addons > MithUI\n\nHold key > Move to category > Move to item > Release")
 end
 
 function ConfigGUI:BuildVendorTab()
