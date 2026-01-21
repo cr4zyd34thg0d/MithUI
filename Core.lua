@@ -30,10 +30,9 @@ MithUI.defaults = {
     radialMenu = {
         enabled = true,
         scale = 1.0,
-        ringRadius = 100,
-        buttonSize = 40,
+        ringRadius = 150,
+        buttonSize = 30,
         fadeTime = 0.2,
-        keybind = "ALT-G",
     },
 }
 
@@ -169,10 +168,15 @@ SlashCmdList["MITHUI"] = function(msg)
         print("  |cff00ff00/tt|r - Tooltip options")
         print("  |cff00ff00/chat|r - Chat options")
         print("  |cff00ff00/mm|r - Minimap options")
-        print("  |cff00ff00/ct|r - Combat text options")
         print("  |cff00ff00/np|r - Nameplate options")
+        print("")
+        print("Keybind radial menu in: ESC > Key Bindings > Addons > MithUI")
     end
 end
 
 -- Export to global
 _G.MithUI = MithUI
+
+-- Binding names (for Key Bindings UI)
+BINDING_HEADER_MITHUI = "MithUI"
+BINDING_NAME_MITHUI_RADIAL_MENU = "Open Radial Menu"

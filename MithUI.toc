@@ -5,6 +5,9 @@
 ## Version: 1.5.0
 ## SavedVariables: MithUIDB
 
+# Bindings
+Bindings.xml
+
 # Core
 Core.lua
 

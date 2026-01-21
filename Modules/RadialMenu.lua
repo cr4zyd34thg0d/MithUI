@@ -53,8 +53,8 @@ function RadialMenu:OnInitialize()
     MithUI.defaults.radialMenu = {
         enabled = true,
         scale = 1.0,
-        ringRadius = 100,
-        buttonSize = 44,
+        ringRadius = 150,
+        buttonSize = 30,
         useFavoriteMounts = true,
     }
 end

@@ -1,0 +1,5 @@
+<Bindings>
+  <Binding name="MITHUI_RADIAL_MENU" category="ADDONS" header="MITHUI" runOnUp="true">
+    RunMacroText("/mp")
+  </Binding>
+</Bindings>

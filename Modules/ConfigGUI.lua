@@ -351,10 +351,9 @@ function ConfigGUI:BuildRadialMenuTab()
         if rm then rm:Toggle() end
     end)
     
-    -- Open keybindings button - just show instructions
+    -- Open keybindings button - open WoW keybindings
     local keybindBtn = self:CreateButton(content, "Set Keybind", 110, yOffset, 100, function()
-        MithUI:Print("To keybind: Create a macro with just /mp")
-        MithUI:Print("Then keybind that action bar slot")
+        Settings.OpenToCategory(Settings.KEYBINDINGS_CATEGORY_ID)
     end)
     yOffset = yOffset - 40
     
@@ -365,7 +364,7 @@ function ConfigGUI:BuildRadialMenuTab()
     helpText:SetWidth(400)
     helpText:SetJustifyH("LEFT")
     helpText:SetTextColor(unpack(COLORS.textDim))
-    helpText:SetText("To keybind: Create a macro with /mp\nThen drag it to your action bar and keybind that slot.\n\nHold key > Move to category > Move to item > Release")
+    helpText:SetText("Keybind: ESC > Key Bindings > Addons > MithUI\n\nUsage: Press key > Move mouse to item > Release")
 end
 
 function ConfigGUI:BuildVendorTab()
