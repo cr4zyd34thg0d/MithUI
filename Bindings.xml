@@ -1,0 +1,26 @@
+<Bindings>
+    <Binding name="MITHUI_RADIAL_TOGGLE" category="BINDING_HEADER_MITHUI" runOnUp="true">
+        MithUI:GetModule("radialMenu"):OnKeyRelease()
+    </Binding>
+    <Binding name="MITHUI_RADIAL_TOGGLE" category="BINDING_HEADER_MITHUI" runOnUp="false">
+        MithUI:GetModule("radialMenu"):OnKeyPress()
+    </Binding>
+    <Binding name="MITHUI_RADIAL_MOUNTS" category="BINDING_HEADER_MITHUI" runOnUp="true">
+        MithUI:GetModule("radialMenu"):OnKeyRelease()
+    </Binding>
+    <Binding name="MITHUI_RADIAL_MOUNTS" category="BINDING_HEADER_MITHUI" runOnUp="false">
+        MithUI:GetModule("radialMenu"):OnKeyPress(1)
+    </Binding>
+    <Binding name="MITHUI_RADIAL_HEARTHS" category="BINDING_HEADER_MITHUI" runOnUp="true">
+        MithUI:GetModule("radialMenu"):OnKeyRelease()
+    </Binding>
+    <Binding name="MITHUI_RADIAL_HEARTHS" category="BINDING_HEADER_MITHUI" runOnUp="false">
+        MithUI:GetModule("radialMenu"):OnKeyPress(2)
+    </Binding>
+    <Binding name="MITHUI_RADIAL_CLASS" category="BINDING_HEADER_MITHUI" runOnUp="true">
+        MithUI:GetModule("radialMenu"):OnKeyRelease()
+    </Binding>
+    <Binding name="MITHUI_RADIAL_CLASS" category="BINDING_HEADER_MITHUI" runOnUp="false">
+        MithUI:GetModule("radialMenu"):OnKeyPress(3)
+    </Binding>
+</Bindings>

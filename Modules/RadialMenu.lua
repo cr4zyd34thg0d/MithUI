@@ -3,13 +3,23 @@
 
 local addonName, MithUI = ...
 
+-- Register keybinding category and names (appears in Key Bindings menu)
+BINDING_HEADER_MITHUI = "MithUI"
+BINDING_NAME_MITHUI_RADIAL_TOGGLE = "Toggle Radial Menu"
+BINDING_NAME_MITHUI_RADIAL_MOUNTS = "Radial Menu: Mounts"
+BINDING_NAME_MITHUI_RADIAL_HEARTHS = "Radial Menu: Hearthstones"
+BINDING_NAME_MITHUI_RADIAL_CLASS = "Radial Menu: Class"
+
 local RadialMenu = {}
 MithUI:RegisterModule("radialMenu", RadialMenu)
 
 local db
 local isOpen = false
-local currentRing = 1
+local currentRing = 0  -- 0 = main category ring, 1+ = sub-rings
 local selectedSlot = nil
+local hoveredSlot = nil
+local centerX, centerY = 0, 0  -- Center of the menu for angle calculation
+local subMenuOpen = false  -- Are we in a sub-menu?
 
 -- Known hearthstone toy IDs
 local HEARTHSTONE_TOYS = {
@@ -111,6 +121,13 @@ local ringIndicator = frame:CreateFontString(nil, "OVERLAY")
 ringIndicator:SetFont("Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
 ringIndicator:SetPoint("CENTER", frame, "CENTER", 0, 0)
 
+-- Category ring (main menu)
+local categoryRing = {
+    name = "Categories",
+    color = {0.5, 0.5, 0.5},
+    items = {}  -- Will be populated with ring names
+}
+
 -- Slot buttons
 local slots = {}
 local NUM_SLOTS = 12
@@ -149,6 +166,7 @@ function RadialMenu:BuildRings()
     local mountRing = {
         name = "Mounts",
         color = {0.6, 0.4, 1.0},
+        icon = 413588,  -- Mount icon
         items = {}
     }
     
@@ -208,6 +226,7 @@ function RadialMenu:BuildRings()
     local hearthRing = {
         name = "Hearthstones",
         color = {0.3, 0.8, 0.5},
+        icon = 134414,  -- Hearthstone icon
         items = {}
     }
     
@@ -269,6 +288,7 @@ function RadialMenu:BuildRings()
     local classRing = {
         name = "Class",
         color = {1.0, 0.5, 0.3},
+        icon = 136116,  -- Generic class icon
         items = {}
     }
     
@@ -286,16 +306,29 @@ function RadialMenu:BuildRings()
                         icon = spellInfo.iconID,
                         desc = spellData.desc,
                     })
+                    -- Use first spell icon as ring icon
+                    if classRing.icon == 136116 then
+                        classRing.icon = spellInfo.iconID
+                    end
                 end
             end
         end
     end
     
-    -- Add some universal utility items
-    -- Engineering items, etc. could go here
-    
     if #classRing.items > 0 then
         table.insert(rings, classRing)
+    end
+    
+    -- Build category ring from available rings
+    categoryRing.items = {}
+    for i, ring in ipairs(rings) do
+        table.insert(categoryRing.items, {
+            type = "category",
+            id = i,
+            name = ring.name,
+            icon = ring.icon,
+            color = ring.color,
+        })
     end
     
     -- Store in db for reference
@@ -370,7 +403,18 @@ function RadialMenu:CreateSlots()
 end
 
 function RadialMenu:UpdateRing()
-    local ring = rings[currentRing]
+    local ring
+    
+    if currentRing == 0 then
+        -- Show category ring (main menu)
+        ring = categoryRing
+        subMenuOpen = false
+    else
+        -- Show specific sub-ring
+        ring = rings[currentRing]
+        subMenuOpen = true
+    end
+    
     if not ring then return end
     
     -- Update indicator
@@ -403,8 +447,13 @@ function RadialMenu:UpdateRing()
             -- Configure slot
             self:ConfigureSlot(slot, item)
             
-            -- Border color
-            slot.border:SetBackdropBorderColor(r * 0.7, g * 0.7, b * 0.7, 1)
+            -- Border color (use item color for categories, ring color otherwise)
+            if item.color then
+                local ir, ig, ib = unpack(item.color)
+                slot.border:SetBackdropBorderColor(ir, ig, ib, 1)
+            else
+                slot.border:SetBackdropBorderColor(r * 0.7, g * 0.7, b * 0.7, 1)
+            end
             
             slot:Show()
         end
@@ -414,6 +463,7 @@ end
 function RadialMenu:ConfigureSlot(slot, item)
     slot.tooltipText = item.name or "Unknown"
     slot.tooltipDesc = item.desc
+    slot.itemData = item  -- Store for later reference
     
     -- Set icon
     if item.icon then
@@ -429,7 +479,12 @@ function RadialMenu:ConfigureSlot(slot, item)
     slot:SetAttribute("toy", nil)
     slot:SetAttribute("macrotext", nil)
     
-    if item.type == "spell" then
+    if item.type == "category" then
+        -- Categories don't have actions - they open sub-menus
+        -- Action handled by mouse tracking
+        slot:SetAttribute("type", nil)
+        
+    elseif item.type == "spell" then
         slot:SetAttribute("type", "spell")
         slot:SetAttribute("spell", item.id)
         
@@ -465,6 +520,157 @@ function RadialMenu:Toggle()
     end
 end
 
+function RadialMenu:OpenRing(ringNum)
+    if InCombatLockdown() then
+        MithUI:Print("Cannot open menu in combat")
+        return
+    end
+    
+    -- Set the ring before opening
+    if ringNum and ringNum >= 1 and ringNum <= #rings then
+        currentRing = ringNum
+    end
+    
+    self:Open()
+end
+
+-- Called when keybind is pressed down
+function RadialMenu:OnKeyPress(ringNum)
+    if InCombatLockdown() then
+        MithUI:Print("Cannot open menu in combat")
+        return
+    end
+    
+    -- Set ring if specified (1+ for direct ring, nil/0 for category menu)
+    if ringNum and ringNum >= 1 and ringNum <= #rings then
+        currentRing = ringNum  -- Go directly to sub-ring
+    else
+        currentRing = 0  -- Start at category menu
+    end
+    
+    self:Open()
+end
+
+-- Called when keybind is released
+function RadialMenu:OnKeyRelease()
+    if not isOpen then return end
+    
+    -- Activate the hovered slot
+    if hoveredSlot and slots[hoveredSlot] then
+        local slot = slots[hoveredSlot]
+        -- Simulate a click on the slot
+        slot:Click()
+    end
+    
+    self:Close()
+end
+
+-- Update hovered slot based on mouse position
+function RadialMenu:UpdateMouseSelection()
+    if not isOpen then return end
+    
+    local ring
+    if currentRing == 0 then
+        ring = categoryRing
+    else
+        ring = rings[currentRing]
+    end
+    
+    if not ring then return end
+    
+    local numItems = #ring.items
+    if numItems == 0 then return end
+    
+    -- Get mouse position relative to menu center
+    local x, y = GetCursorPosition()
+    local scale = UIParent:GetEffectiveScale()
+    x = x / scale
+    y = y / scale
+    
+    local dx = x - centerX
+    local dy = y - centerY
+    local distance = math.sqrt(dx * dx + dy * dy)
+    
+    -- Only select if mouse is far enough from center (deadzone)
+    local deadzone = 30
+    local prevHovered = hoveredSlot
+    
+    if distance < deadzone then
+        hoveredSlot = nil
+    else
+        -- Calculate angle from center
+        local angle = math.deg(math.atan2(dy, dx))
+        
+        -- Normalize angle to 0-360
+        if angle < 0 then angle = angle + 360 end
+        
+        -- Adjust for our starting position (-90 degrees / top)
+        angle = angle + 90
+        if angle >= 360 then angle = angle - 360 end
+        
+        -- Determine which slot based on angle
+        local slotAngle = 360 / numItems
+        local slotIndex = math.floor(angle / slotAngle) + 1
+        
+        if slotIndex > numItems then slotIndex = numItems end
+        if slotIndex < 1 then slotIndex = 1 end
+        
+        hoveredSlot = slotIndex
+    end
+    
+    -- Check if we should open a sub-menu (category hovered)
+    if currentRing == 0 and hoveredSlot and hoveredSlot ~= prevHovered then
+        local item = categoryRing.items[hoveredSlot]
+        if item and item.type == "category" then
+            -- Open the sub-ring
+            currentRing = item.id
+            self:UpdateRing()
+            -- Keep the same hovered slot visually until they move
+            hoveredSlot = nil
+        end
+    end
+    
+    -- Update visual highlighting
+    if prevHovered ~= hoveredSlot then
+        self:UpdateSlotHighlights()
+    end
+end
+
+function RadialMenu:UpdateSlotHighlights()
+    local ring
+    if currentRing == 0 then
+        ring = categoryRing
+    else
+        ring = rings[currentRing]
+    end
+    
+    if not ring then return end
+    
+    local r, g, b = unpack(ring.color or {0.3, 0.3, 0.3})
+    
+    for i, slot in ipairs(slots) do
+        if slot:IsShown() then
+            local item = ring.items[i]
+            if i == hoveredSlot then
+                -- Highlighted slot
+                slot.border:SetBackdropBorderColor(1, 0.8, 0, 1)
+                slot.bg:SetColorTexture(0.3, 0.3, 0.3, 0.9)
+                slot:SetScale(1.15)
+            else
+                -- Normal slot - use item color for categories
+                if item and item.color then
+                    local ir, ig, ib = unpack(item.color)
+                    slot.border:SetBackdropBorderColor(ir, ig, ib, 1)
+                else
+                    slot.border:SetBackdropBorderColor(r * 0.7, g * 0.7, b * 0.7, 1)
+                end
+                slot.bg:SetColorTexture(0.1, 0.1, 0.1, 0.8)
+                slot:SetScale(1.0)
+            end
+        end
+    end
+end
+
 function RadialMenu:Open()
     if InCombatLockdown() then
         MithUI:Print("Cannot open menu in combat")
@@ -477,17 +683,43 @@ function RadialMenu:Open()
     -- Center on cursor
     local x, y = GetCursorPosition()
     local scale = UIParent:GetEffectiveScale()
+    centerX = x / scale
+    centerY = y / scale
+    
     frame:ClearAllPoints()
-    frame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / scale, y / scale)
+    frame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", centerX, centerY)
+    
+    -- Reset to category ring (main menu) unless a specific ring was requested
+    if currentRing == 0 or currentRing > #rings then
+        currentRing = 0
+    end
+    
+    -- Reset hover state
+    hoveredSlot = nil
+    subMenuOpen = false
     
     self:UpdateRing()
     frame:Show()
     isOpen = true
+    
+    -- Start mouse tracking
+    frame:SetScript("OnUpdate", function(self, elapsed)
+        RadialMenu:UpdateMouseSelection()
+    end)
 end
 
 function RadialMenu:Close()
     frame:Hide()
+    frame:SetScript("OnUpdate", nil)
     isOpen = false
+    hoveredSlot = nil
+    subMenuOpen = false
+    currentRing = 0  -- Reset to category menu for next open
+    
+    -- Reset slot scales
+    for _, slot in ipairs(slots) do
+        slot:SetScale(1.0)
+    end
 end
 
 function RadialMenu:NextRing()
@@ -628,8 +860,11 @@ function RadialMenu:SlashCommand(args)
         print("  |cff00ff00/mp radius [num]|r - Set ring radius")
         print("  |cff00ff00/mp addmount [id]|r - Add custom mount")
         print("")
-        print("  Scroll wheel changes rings when open")
-        print("  Right-click or ESC to close")
+        print("  |cff00ccffKeybind:|r Hold key, move mouse toward option, release")
+        print("  |cff00ccffIn menu:|r Scroll wheel changes rings")
+        print("  |cff00ccffClose:|r Right-click or ESC")
+        print("")
+        print("  Set keybinds in: |cff00ff00Key Bindings > MithUI|r")
     end
 end
 

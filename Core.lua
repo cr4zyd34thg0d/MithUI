@@ -4,7 +4,7 @@
 local addonName, MithUI = ...
 
 -- Version
-MithUI.version = "1.3.0"
+MithUI.version = "1.4.0"
 
 -- Default settings structure
 MithUI.defaults = {

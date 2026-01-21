@@ -69,15 +69,28 @@ Clean, minimal, Luxthos-inspired.
 
 Like OPie — a pie menu that pops up with your stuff.
 
-**3 Rings (scroll wheel to switch):**
-1. **Mounts** — Your favorite mounts
-2. **Hearthstones** — All your hearthstones and teleport items
+**How to use:**
+1. Set a keybind in **Key Bindings → MithUI**
+2. **Hold** the key — category menu appears (Mounts, Hearthstones, Class)
+3. **Move mouse** toward a category — sub-menu opens with items
+4. **Move to specific item** — it highlights
+5. **Release** the key — activates that item
+
+**3 Categories:**
+1. **Mounts** — Your favorite mounts + random favorite
+2. **Hearthstones** — All your hearthstones and teleport toys
 3. **Class Abilities** — Death Gate, Soulwell, Ritual of Summoning, etc.
 
+**Keybinds available:**
+- Toggle Radial Menu (starts at category selection)
+- Radial Menu: Mounts (skips to mounts directly)
+- Radial Menu: Hearthstones (skips to hearthstones directly)
+- Radial Menu: Class (skips to class abilities directly)
+
 ```
-/mp          → Open menu
-/mp add spell Death Gate   → Add a spell
-/mp add item 6948          → Add an item by ID
+/mp          → Open menu (click mode)
+/mp refresh  → Refresh rings (detect new items)
+/mp list     → List all rings
 ```
 
 ---
