@@ -58,7 +58,7 @@ function Options:CreateOptionsPanel()
     slashList:SetPoint("TOPLEFT", slashTitle, "BOTTOMLEFT", 0, -8)
     slashList:SetWidth(550)
     slashList:SetJustifyH("LEFT")
-    slashList:SetText("|cff00ff00/mu|r - Open settings GUI\n|cff00ff00/mc|r - Cast Bar\n|cff00ff00/mp|r - Radial Menu\n|cff00ff00/av|r - Auto Vendor\n|cff00ff00/tt|r - Tooltips\n|cff00ff00/chat|r - Chat\n|cff00ff00/mm|r - Minimap\n|cff00ff00/ct|r - Combat Text\n|cff00ff00/np|r - Nameplates")
+    slashList:SetText("|cff00ff00/mu|r - Open settings GUI\n|cff00ff00/mc|r - Cast Bar\n|cff00ff00/mp|r - Radial Menu\n|cff00ff00/av|r - Auto Vendor\n|cff00ff00/tt|r - Tooltips\n|cff00ff00/chat|r - Chat\n|cff00ff00/mm|r - Minimap\n|cff00ff00/np|r - Nameplates")
     
     -- Register with new Settings API (WoW 10.0+)
     if Settings and Settings.RegisterCanvasLayoutCategory then
@@ -73,7 +73,6 @@ function Options:CreateOptionsPanel()
         self:CreateSubPanel(category, "Tooltips", self.BuildTooltipsOptions)
         self:CreateSubPanel(category, "Chat", self.BuildChatOptions)
         self:CreateSubPanel(category, "Minimap", self.BuildMinimapOptions)
-        self:CreateSubPanel(category, "Combat Text", self.BuildCombatTextOptions)
         self:CreateSubPanel(category, "Nameplates", self.BuildNameplatesOptions)
     else
         -- Fallback for older API
@@ -328,36 +327,6 @@ function Options:BuildMinimapOptions(content)
     yOffset = yOffset - 30
     
     Options:CreateCheckbox(content, "Square Minimap (requires reload)", 0, yOffset, db, "squareMinimap")
-end
-
--- Combat Text Options
-function Options:BuildCombatTextOptions(content)
-    if not MithUIDB.combatText then MithUIDB.combatText = {} end
-    local db = MithUIDB.combatText
-    local yOffset = 0
-    
-    Options:CreateCheckbox(content, "Enable Combat Text", 0, yOffset, db, "enabled")
-    yOffset = yOffset - 30
-    
-    Options:CreateCheckbox(content, "Show Outgoing Damage", 0, yOffset, db, "showOutgoingDamage")
-    yOffset = yOffset - 30
-    
-    Options:CreateCheckbox(content, "Show Outgoing Healing", 0, yOffset, db, "showOutgoingHealing")
-    yOffset = yOffset - 30
-    
-    Options:CreateCheckbox(content, "Show Incoming Damage", 0, yOffset, db, "showIncomingDamage")
-    yOffset = yOffset - 30
-    
-    Options:CreateCheckbox(content, "Highlight Crits", 0, yOffset, db, "showCrits")
-    yOffset = yOffset - 30
-    
-    Options:CreateCheckbox(content, "Show DoTs", 0, yOffset, db, "showDots")
-    yOffset = yOffset - 30
-    
-    Options:CreateCheckbox(content, "Show HoTs", 0, yOffset, db, "showHots")
-    yOffset = yOffset - 40
-    
-    Options:CreateSlider(content, "Font Size", 0, yOffset, 12, 32, db, "fontSize")
 end
 
 -- Nameplates Options

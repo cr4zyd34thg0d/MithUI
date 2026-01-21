@@ -119,12 +119,12 @@ function ConfigGUI:CreateMainFrame()
     
     -- Tabs
     mainFrame.tabs = {}
-    local tabNames = {"Cast Bar", "Radial", "Vendor", "Tooltips", "Chat", "Minimap", "Combat", "Plates"}
+    local tabNames = {"Cast Bar", "Radial", "Vendor", "Tooltips", "Chat", "Minimap", "Plates"}
     
     for i, name in ipairs(tabNames) do
         local tab = CreateFrame("Button", nil, tabContainer, "BackdropTemplate")
-        tab:SetSize(52, 28)
-        tab:SetPoint("LEFT", (i-1) * 54 + 5, 0)
+        tab:SetSize(58, 28)
+        tab:SetPoint("LEFT", (i-1) * 60 + 5, 0)
         tab:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8x8",
             edgeFile = "Interface\\Buttons\\WHITE8x8",
@@ -206,8 +206,6 @@ function ConfigGUI:RefreshTab()
     elseif currentTab == 6 then
         self:BuildMinimapTab()
     elseif currentTab == 7 then
-        self:BuildCombatTextTab()
-    elseif currentTab == 8 then
         self:BuildNameplatesTab()
     end
 end
@@ -619,77 +617,6 @@ function ConfigGUI:BuildMinimapTab()
     noteText:SetPoint("TOPLEFT", 0, yOffset)
     noteText:SetTextColor(unpack(COLORS.textDim))
     noteText:SetText("Some changes require /reload to take effect\nHover minimap to see collected buttons")
-end
-
-function ConfigGUI:BuildCombatTextTab()
-    local content = mainFrame.content
-    local yOffset = 0
-    
-    if not MithUIDB.combatText then MithUIDB.combatText = {} end
-    local ctdb = MithUIDB.combatText
-    
-    -- Enable checkbox
-    local enableCB = self:CreateCheckbox(content, "Enable Combat Text", 0, yOffset,
-        ctdb.enabled ~= false,
-        function(checked)
-            ctdb.enabled = checked
-        end)
-    yOffset = yOffset - 30
-    
-    -- Show Damage
-    local dmgCB = self:CreateCheckbox(content, "Show Damage", 0, yOffset,
-        ctdb.showDamage ~= false,
-        function(checked)
-            ctdb.showDamage = checked
-        end)
-    yOffset = yOffset - 30
-    
-    -- Show Healing
-    local healCB = self:CreateCheckbox(content, "Show Healing", 0, yOffset,
-        ctdb.showHealing ~= false,
-        function(checked)
-            ctdb.showHealing = checked
-        end)
-    yOffset = yOffset - 30
-    
-    -- Show Crits
-    local critCB = self:CreateCheckbox(content, "Highlight Crits", 0, yOffset,
-        ctdb.showCrits ~= false,
-        function(checked)
-            ctdb.showCrits = checked
-        end)
-    yOffset = yOffset - 30
-    
-    -- Show Incoming Damage
-    local incCB = self:CreateCheckbox(content, "Show Incoming Damage", 0, yOffset,
-        ctdb.showIncoming ~= false,
-        function(checked)
-            ctdb.showIncoming = checked
-        end)
-    yOffset = yOffset - 30
-    
-    -- Show Miss/Dodge/Parry
-    local missCB = self:CreateCheckbox(content, "Show Miss/Dodge/Parry", 0, yOffset,
-        ctdb.showMiss ~= false,
-        function(checked)
-            ctdb.showMiss = checked
-        end)
-    yOffset = yOffset - 40
-    
-    -- Font Size slider
-    local fontSlider = self:CreateSlider(content, "Font Size", 0, yOffset, 12, 32,
-        ctdb.fontSize or 20,
-        function(value)
-            ctdb.fontSize = value
-        end)
-    yOffset = yOffset - 50
-    
-    -- Help text
-    local helpText = content:CreateFontString(nil, "OVERLAY")
-    helpText:SetFont("Fonts\\FRIZQT__.TTF", 9, "")
-    helpText:SetPoint("TOPLEFT", 0, yOffset)
-    helpText:SetTextColor(unpack(COLORS.textDim))
-    helpText:SetText("Use /ct for more options")
 end
 
 function ConfigGUI:BuildNameplatesTab()

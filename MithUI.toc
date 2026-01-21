@@ -17,5 +17,4 @@ Modules\AutoVendor.lua
 Modules\Tooltips.lua
 Modules\Chat.lua
 Modules\Minimap.lua
-Modules\CombatText.lua
 Modules\Nameplates.lua
