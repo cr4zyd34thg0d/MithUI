@@ -2,16 +2,14 @@
 ## Title: |cff00ccffMithUI|r
 ## Notes: Clean, minimal UI enhancements - Cast Bar, Radial Menu, QoL
 ## Author: Mith
-## Version: 1.4.0
+## Version: 1.5.0
 ## SavedVariables: MithUIDB
-
-# Keybindings
-Bindings.xml
 
 # Core
 Core.lua
 
 # Modules
+Modules\Options.lua
 Modules\CastBar.lua
 Modules\RadialMenu.lua
 Modules\ConfigGUI.lua

@@ -93,9 +93,16 @@ end
 
 function CombatText:CreateTextPool()
     -- Pre-create some text objects
+    local fontSize = (db and db.fontSize) or defaults.fontSize or 24
+    local fontOutline = (db and db.fontOutline) or true
+    
     for i = 1, 20 do
         local text = anchor:CreateFontString(nil, "OVERLAY")
-        text:SetFont("Fonts\\FRIZQT__.TTF", db.fontSize, db.fontOutline and "OUTLINE" or "")
+        local success = text:SetFont("Fonts\\FRIZQT__.TTF", fontSize, fontOutline and "OUTLINE" or "")
+        if not success then
+            -- Fallback font
+            text:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", fontSize, "OUTLINE")
+        end
         text:Hide()
         table.insert(textPool, text)
     end
@@ -106,7 +113,14 @@ function CombatText:GetText()
     if not text then
         text = anchor:CreateFontString(nil, "OVERLAY")
     end
-    text:SetFont("Fonts\\FRIZQT__.TTF", db.fontSize, db.fontOutline and "OUTLINE" or "")
+    
+    local fontSize = (db and db.fontSize) or defaults.fontSize or 24
+    local fontOutline = (db and db.fontOutline ~= false)
+    
+    local success = text:SetFont("Fonts\\FRIZQT__.TTF", fontSize, fontOutline and "OUTLINE" or "")
+    if not success then
+        text:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", fontSize, "OUTLINE")
+    end
     text:SetAlpha(1)
     text:Show()
     return text
@@ -120,15 +134,19 @@ function CombatText:ReleaseText(text)
 end
 
 function CombatText:DisplayText(text, color, isCrit, direction)
-    if not db.enabled then return end
+    if not db or not db.enabled then return end
     
     local textObj = self:GetText()
     textObj:SetText(text)
     textObj:SetTextColor(unpack(color))
     
     -- Size based on crit
-    local size = isCrit and db.critFontSize or db.fontSize
-    textObj:SetFont("Fonts\\FRIZQT__.TTF", size, db.fontOutline and "OUTLINE" or "")
+    local size = isCrit and (db.critFontSize or 32) or (db.fontSize or 24)
+    local fontOutline = (db.fontOutline ~= false)
+    local success = textObj:SetFont("Fonts\\FRIZQT__.TTF", size, fontOutline and "OUTLINE" or "")
+    if not success then
+        textObj:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", size, "OUTLINE")
+    end
     
     -- Random horizontal offset for spread
     local xOffset = (math.random() - 0.5) * db.spreadX
@@ -183,8 +201,16 @@ updateFrame:SetScript("OnUpdate", function(self, elapsed)
             -- Crit scale animation (pulse)
             if data.isCrit and progress < 0.2 then
                 local scale = 1 + (0.3 * (1 - progress / 0.2))
-                local size = (db and db.critFontSize or 32) * scale
-                data.text:SetFont("Fonts\\FRIZQT__.TTF", size, (db and db.fontOutline) and "OUTLINE" or "")
+                local size = ((db and db.critFontSize) or 32) * scale
+                local fontOutline = (db and db.fontOutline ~= false)
+                local success = pcall(function()
+                    data.text:SetFont("Fonts\\FRIZQT__.TTF", size, fontOutline and "OUTLINE" or "")
+                end)
+                if not success then
+                    pcall(function()
+                        data.text:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", size, "OUTLINE")
+                    end)
+                end
             end
         end
     end

@@ -4,7 +4,7 @@
 local addonName, MithUI = ...
 
 -- Version
-MithUI.version = "1.4.0"
+MithUI.version = "1.5.0"
 
 -- Default settings structure
 MithUI.defaults = {
@@ -12,6 +12,7 @@ MithUI.defaults = {
         enabled = true,
         width = 280,
         height = 24,
+        scale = 1.0,
         iconSize = 28,
         posX = 0,
         posY = -200,
@@ -103,18 +104,29 @@ events:SetScript("OnEvent", function(self, event, ...)
         end
         
     elseif event == "PLAYER_LOGIN" then
-        -- Initialize all modules
+        -- Initialize all modules with error handling
         for name, module in pairs(MithUI.modules) do
-            if module.OnEnable and MithUIDB[name] and MithUIDB[name].enabled then
-                module:OnEnable()
+            if module.OnEnable then
+                -- Try to enable the module
+                local success, err = pcall(function()
+                    module:OnEnable()
+                end)
+                if not success then
+                    MithUI:Print("|cffff0000Error|r loading " .. name .. ": " .. tostring(err))
+                end
             end
         end
         
     elseif event == "PLAYER_ENTERING_WORLD" then
-        -- Apply saved positions
+        -- Apply saved positions with error handling
         for name, module in pairs(MithUI.modules) do
             if module.OnEnterWorld then
-                module:OnEnterWorld()
+                local success, err = pcall(function()
+                    module:OnEnterWorld()
+                end)
+                if not success then
+                    MithUI:Print("|cffff0000Error|r in " .. name .. " OnEnterWorld: " .. tostring(err))
+                end
             end
         end
     end

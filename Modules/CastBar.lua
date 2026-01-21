@@ -10,6 +10,8 @@ MithUI:RegisterModule("castBar", CastBar)
 local db
 local casting, channeling = false, false
 local startTime, endTime = 0, 0
+local previewMode = false
+local previewTimer = nil
 
 -- Create main frame
 local frame = CreateFrame("Frame", "MithUICastBar", UIParent)
@@ -23,6 +25,22 @@ function CastBar:OnEnable()
     db = MithUIDB.castBar
     self:CreateFrames()
     self:RegisterEvents()
+    self:HideBlizzardCastBar()
+end
+
+function CastBar:HideBlizzardCastBar()
+    -- Hide the default player cast bar
+    if PlayerCastingBarFrame then
+        PlayerCastingBarFrame:UnregisterAllEvents()
+        PlayerCastingBarFrame:Hide()
+        PlayerCastingBarFrame:SetScript("OnShow", function(self) self:Hide() end)
+    end
+    
+    -- Also hide the older CastingBarFrame if it exists
+    if CastingBarFrame then
+        CastingBarFrame:UnregisterAllEvents()
+        CastingBarFrame:Hide()
+    end
 end
 
 function CastBar:OnEnterWorld()
@@ -34,8 +52,9 @@ function CastBar:OnEnterWorld()
 end
 
 function CastBar:CreateFrames()
-    -- Size
+    -- Size and scale
     frame:SetSize(db.width, db.height)
+    frame:SetScale(db.scale or 1.0)
     frame:SetPoint("CENTER", UIParent, "CENTER", db.posX, db.posY)
     
     -- Background
@@ -262,6 +281,9 @@ function CastBar:SlashCommand(args)
     
     if cmd == "lock" then
         db.locked = true
+        previewMode = false
+        if previewTimer then previewTimer:Cancel() end
+        frame:Hide()
         MithUI:Print("Cast bar locked")
         
     elseif cmd == "unlock" then
@@ -272,8 +294,25 @@ function CastBar:SlashCommand(args)
         frame.bar:SetValue(0.5)
         frame:Show()
         C_Timer.After(5, function()
-            if not casting and not channeling then frame:Hide() end
+            if not casting and not channeling and not previewMode then frame:Hide() end
         end)
+        
+    elseif cmd == "preview" then
+        previewMode = not previewMode
+        if previewMode then
+            db.locked = false
+            frame.spellText:SetText("Preview Mode")
+            frame.timerText:SetText("2.5")
+            if frame.icon then frame.icon:SetTexture(136243) end
+            frame.bar:SetValue(0.6)
+            frame.bar:SetStatusBarColor(unpack(db.barColor))
+            frame:Show()
+            MithUI:Print("Preview ON - Drag to position, use /mc scale [num] to resize")
+        else
+            db.locked = true
+            frame:Hide()
+            MithUI:Print("Preview OFF - Position saved")
+        end
         
     elseif cmd == "test" then
         frame.spellText:SetText("Test Spell")
@@ -282,14 +321,29 @@ function CastBar:SlashCommand(args)
         frame.bar:SetValue(0.4)
         frame.bar:SetStatusBarColor(unpack(db.barColor))
         frame:Show()
-        MithUI:Print("Showing test bar")
+        MithUI:Print("Showing test bar (5 sec)")
+        C_Timer.After(5, function()
+            if not casting and not channeling and not previewMode then frame:Hide() end
+        end)
         
     elseif cmd == "reset" then
         frame:ClearAllPoints()
         frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
         db.posX = 0
         db.posY = -200
-        MithUI:Print("Position reset")
+        db.scale = 1.0
+        frame:SetScale(1.0)
+        MithUI:Print("Position and scale reset")
+        
+    elseif cmd == "scale" then
+        local scale = tonumber(args[2])
+        if scale and scale >= 0.5 and scale <= 3.0 then
+            db.scale = scale
+            frame:SetScale(scale)
+            MithUI:Print("Scale: " .. scale)
+        else
+            MithUI:Print("Usage: /mc scale [0.5-3.0] (current: " .. (db.scale or 1.0) .. ")")
+        end
         
     elseif cmd == "size" then
         local w = tonumber(args[2])
@@ -322,10 +376,12 @@ function CastBar:SlashCommand(args)
         
     else
         MithUI:Print("Cast Bar commands:")
+        print("  |cff00ff00/mc preview|r - Toggle preview mode (drag & scale)")
         print("  |cff00ff00/mc lock|r - Lock position")
         print("  |cff00ff00/mc unlock|r - Unlock to move")
+        print("  |cff00ff00/mc scale [0.5-3]|r - Set scale (e.g. /mc scale 1.2)")
         print("  |cff00ff00/mc test|r - Show test bar")
-        print("  |cff00ff00/mc reset|r - Reset position")
+        print("  |cff00ff00/mc reset|r - Reset position & scale")
         print("  |cff00ff00/mc size [w] [h]|r - Set size (e.g. /mc size 300 28)")
         print("  |cff00ff00/mc color [hex]|r - Set color (e.g. /mc color ff6600)")
         print("  |cff00ff00/mc icon|r - Toggle icon")

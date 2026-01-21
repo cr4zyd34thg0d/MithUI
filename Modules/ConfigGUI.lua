@@ -253,6 +253,16 @@ function ConfigGUI:BuildCastBarTab()
         end)
     yOffset = yOffset - 40
     
+    -- Scale slider
+    local scaleSlider = self:CreateSlider(content, "Scale", 0, yOffset, 50, 200,
+        (MithUIDB.castBar.scale or 1.0) * 100,
+        function(value)
+            MithUIDB.castBar.scale = value / 100
+            local cb = MithUI:GetModule("castBar")
+            if cb then cb:Refresh() end
+        end)
+    yOffset = yOffset - 50
+    
     -- Width slider
     local widthSlider = self:CreateSlider(content, "Width", 0, yOffset, 150, 400,
         MithUIDB.castBar.width,
@@ -273,24 +283,20 @@ function ConfigGUI:BuildCastBarTab()
         end)
     yOffset = yOffset - 50
     
-    -- Font size slider
-    local fontSlider = self:CreateSlider(content, "Font Size", 0, yOffset, 8, 18,
-        MithUIDB.castBar.fontSize,
-        function(value)
-            MithUIDB.castBar.fontSize = value
-            local cb = MithUI:GetModule("castBar")
-            if cb then cb:Refresh() end
-        end)
-    yOffset = yOffset - 50
+    -- Preview button
+    local previewBtn = self:CreateButton(content, "Preview Mode", 0, yOffset, 110, function()
+        local cb = MithUI:GetModule("castBar")
+        if cb then cb:SlashCommand({"preview"}) end
+    end)
     
     -- Test button
-    local testBtn = self:CreateButton(content, "Test Cast Bar", 0, yOffset, 120, function()
+    local testBtn = self:CreateButton(content, "Test", 120, yOffset, 60, function()
         local cb = MithUI:GetModule("castBar")
         if cb then cb:SlashCommand({"test"}) end
     end)
     
     -- Reset button
-    local resetBtn = self:CreateButton(content, "Reset Position", 130, yOffset, 120, function()
+    local resetBtn = self:CreateButton(content, "Reset", 190, yOffset, 60, function()
         local cb = MithUI:GetModule("castBar")
         if cb then cb:SlashCommand({"reset"}) end
     end)
@@ -347,10 +353,10 @@ function ConfigGUI:BuildRadialMenuTab()
         if rm then rm:Toggle() end
     end)
     
-    -- Open keybindings button
+    -- Open keybindings button - just show instructions
     local keybindBtn = self:CreateButton(content, "Set Keybind", 110, yOffset, 100, function()
-        -- Open WoW's keybinding UI to the MithUI section
-        Settings.OpenToCategory(Settings.KEYBINDINGS_CATEGORY_ID)
+        MithUI:Print("To keybind: Create a macro with just /mp")
+        MithUI:Print("Then keybind that action bar slot")
     end)
     yOffset = yOffset - 40
     
@@ -361,7 +367,7 @@ function ConfigGUI:BuildRadialMenuTab()
     helpText:SetWidth(400)
     helpText:SetJustifyH("LEFT")
     helpText:SetTextColor(unpack(COLORS.textDim))
-    helpText:SetText("Keybind: Key Bindings > Addons > MithUI\n\nHold key > Move to category > Move to item > Release")
+    helpText:SetText("To keybind: Create a macro with /mp\nThen drag it to your action bar and keybind that slot.\n\nHold key > Move to category > Move to item > Release")
 end
 
 function ConfigGUI:BuildVendorTab()
