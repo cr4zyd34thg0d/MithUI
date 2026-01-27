@@ -328,104 +328,91 @@ end
 function ConfigGUI:BuildRadialMenuTab()
     local content = mainFrame.content
     local yOffset = 0
-    
+    local rmdb = MithUIDB.radialMenu
+    if not rmdb then return end
+
     -- Enable checkbox
     local enableCB = self:CreateCheckbox(content, "Enable Radial Menu", 0, yOffset,
-        MithUIDB.radialMenu.enabled,
+        rmdb.enabled ~= false,
         function(checked)
-            MithUIDB.radialMenu.enabled = checked
+            rmdb.enabled = checked
             MithUI:Print("Radial Menu " .. (checked and "enabled" or "disabled"))
         end)
+    yOffset = yOffset - 30
+
+    -- Show Cooldowns
+    local cdCB = self:CreateCheckbox(content, "Show Cooldowns on Slices", 0, yOffset,
+        rmdb.showCooldowns ~= false,
+        function(checked) rmdb.showCooldowns = checked end)
+    yOffset = yOffset - 30
+
+    -- Show Ring Name
+    local rnCB = self:CreateCheckbox(content, "Show Ring Name", 0, yOffset,
+        rmdb.showRingName ~= false,
+        function(checked) rmdb.showRingName = checked end)
     yOffset = yOffset - 40
-    
+
     -- Keybind section
     local keybindLabel = content:CreateFontString(nil, "OVERLAY")
     keybindLabel:SetFont("Fonts\\FRIZQT__.TTF", 11, "")
     keybindLabel:SetPoint("TOPLEFT", 0, yOffset)
     keybindLabel:SetText("Keybind:")
     keybindLabel:SetTextColor(1, 1, 1)
-    
-    -- Keybind display
+
     local keybindDisplay = content:CreateFontString(nil, "OVERLAY")
     keybindDisplay:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
     keybindDisplay:SetPoint("LEFT", keybindLabel, "RIGHT", 8, 0)
     keybindDisplay:SetTextColor(0, 0.8, 1)
-    
-    -- Get current keybind
+
     local currentBind = GetBindingKey("CLICK MithUIRadialMenuButton:LeftButton") or "Not Set"
     keybindDisplay:SetText(currentBind)
-    
-    -- Set Keybind button
+
     local keybindBtn = self:CreateButton(content, "Set Keybind", 150, yOffset, 100, function() end)
-    
-    -- Keybind capture state
+
     local capturing = false
-    
-    keybindBtn:SetScript("OnClick", function(self)
+    keybindBtn:SetScript("OnClick", function()
         if capturing then return end
         capturing = true
         keybindDisplay:SetText("|cffff0000Press a key...|r")
-        
-        -- Create capture frame
+
         local captureFrame = CreateFrame("Frame", nil, UIParent)
         captureFrame:SetFrameStrata("FULLSCREEN_DIALOG")
         captureFrame:SetAllPoints()
         captureFrame:EnableKeyboard(true)
         captureFrame:SetScript("OnKeyDown", function(self, key)
-            -- Ignore modifier keys alone
-            if key == "LSHIFT" or key == "RSHIFT" or key == "LCTRL" or key == "RCTRL" or key == "LALT" or key == "RALT" then
-                return
-            end
-            
-            -- Build the key string with modifiers
+            if key == "LSHIFT" or key == "RSHIFT" or key == "LCTRL" or key == "RCTRL" or key == "LALT" or key == "RALT" then return end
             local bind = ""
             if IsShiftKeyDown() then bind = bind .. "SHIFT-" end
             if IsControlKeyDown() then bind = bind .. "CTRL-" end
             if IsAltKeyDown() then bind = bind .. "ALT-" end
             bind = bind .. key
-            
-            -- ESC to cancel
             if key == "ESCAPE" then
                 keybindDisplay:SetText(GetBindingKey("CLICK MithUIRadialMenuButton:LeftButton") or "Not Set")
                 capturing = false
                 self:Hide()
                 return
             end
-            
-            -- Set the binding
             if not InCombatLockdown() then
-                -- Clear old binding first
                 local oldKey = GetBindingKey("CLICK MithUIRadialMenuButton:LeftButton")
-                if oldKey then
-                    SetBinding(oldKey, nil)
-                end
-                
-                -- Set new binding
+                if oldKey then SetBinding(oldKey, nil) end
                 SetBinding(bind, "CLICK MithUIRadialMenuButton:LeftButton")
                 SaveBindings(GetCurrentBindingSet())
-                
                 keybindDisplay:SetText(bind)
                 MithUI:Print("Radial Menu bound to: " .. bind)
             else
                 MithUI:Print("Cannot change keybinds in combat")
                 keybindDisplay:SetText(GetBindingKey("CLICK MithUIRadialMenuButton:LeftButton") or "Not Set")
             end
-            
             capturing = false
             self:Hide()
         end)
-        
-        captureFrame:SetScript("OnMouseDown", function(self, button)
-            if button == "LeftButton" or button == "RightButton" then
-                -- Cancel on mouse click
-                keybindDisplay:SetText(GetBindingKey("CLICK MithUIRadialMenuButton:LeftButton") or "Not Set")
-                capturing = false
-                self:Hide()
-            end
+        captureFrame:SetScript("OnMouseDown", function(self)
+            keybindDisplay:SetText(GetBindingKey("CLICK MithUIRadialMenuButton:LeftButton") or "Not Set")
+            capturing = false
+            self:Hide()
         end)
     end)
-    
-    -- Clear keybind button
+
     local clearBtn = self:CreateButton(content, "Clear", 260, yOffset, 60, function()
         if not InCombatLockdown() then
             local oldKey = GetBindingKey("CLICK MithUIRadialMenuButton:LeftButton")
@@ -437,52 +424,86 @@ function ConfigGUI:BuildRadialMenuTab()
             MithUI:Print("Keybind cleared")
         end
     end)
-    
     yOffset = yOffset - 50
-    
+
     -- Scale slider
-    local scaleSlider = self:CreateSlider(content, "Scale", 0, yOffset, 50, 200,
-        (MithUIDB.radialMenu.scale or 1.0) * 100,
+    self:CreateSlider(content, "Scale", 0, yOffset, 50, 200,
+        (rmdb.scale or 1.0) * 100,
         function(value)
-            MithUIDB.radialMenu.scale = value / 100
-            local rm = MithUI:GetModule("radialMenu")
-            if rm and MithUIRadialMenu then
-                MithUIRadialMenu:SetScale(value / 100)
-            end
+            rmdb.scale = value / 100
+            if MithUIRadialMenu then MithUIRadialMenu:SetScale(value / 100) end
         end)
     yOffset = yOffset - 50
-    
+
     -- Radius slider
-    local radiusSlider = self:CreateSlider(content, "Ring Radius", 0, yOffset, 60, 200,
-        MithUIDB.radialMenu.ringRadius or 150,
+    self:CreateSlider(content, "Ring Radius", 0, yOffset, 60, 200,
+        rmdb.radius or 120,
+        function(value) rmdb.radius = value end)
+    yOffset = yOffset - 50
+
+    -- Slice size slider
+    self:CreateSlider(content, "Slice Size", 0, yOffset, 24, 60,
+        rmdb.sliceSize or 40,
+        function(value) rmdb.sliceSize = value end)
+    yOffset = yOffset - 50
+
+    -- Max mount slices slider
+    self:CreateSlider(content, "Max Favorite Mounts", 0, yOffset, 4, 32,
+        rmdb.maxMountSlices or 12,
         function(value)
-            MithUIDB.radialMenu.ringRadius = value
+            rmdb.maxMountSlices = value
+            local rm = MithUI:GetModule("radialMenu")
+            if rm then rm:BuildAllRings() end
         end)
     yOffset = yOffset - 50
-    
-    -- Button size slider
-    local btnSlider = self:CreateSlider(content, "Button Size", 0, yOffset, 24, 50,
-        MithUIDB.radialMenu.buttonSize or 30,
-        function(value)
-            MithUIDB.radialMenu.buttonSize = value
-        end)
-    yOffset = yOffset - 50
-    
-    -- Test menu button
-    local openBtn = self:CreateButton(content, "Test Menu", 0, yOffset, 100, function()
+
+    -- Rings section header
+    local ringsHeader = content:CreateFontString(nil, "OVERLAY")
+    ringsHeader:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+    ringsHeader:SetPoint("TOPLEFT", 0, yOffset)
+    ringsHeader:SetText("Rings:")
+    ringsHeader:SetTextColor(unpack(COLORS.accent))
+    yOffset = yOffset - 20
+
+    -- Ring enable/disable checkboxes
+    if rmdb.rings then
+        for i, ringDef in ipairs(rmdb.rings) do
+            local ringCB = self:CreateCheckbox(content, ringDef.name, 0, yOffset,
+                ringDef.enabled ~= false,
+                function(checked)
+                    ringDef.enabled = checked
+                    local rm = MithUI:GetModule("radialMenu")
+                    if rm then rm:BuildAllRings() end
+                    MithUI:Print(ringDef.name .. " " .. (checked and "enabled" or "disabled"))
+                end)
+            yOffset = yOffset - 25
+        end
+    end
+    yOffset = yOffset - 15
+
+    -- Test / Refresh buttons
+    local testBtn = self:CreateButton(content, "Test Menu", 0, yOffset, 100, function()
         local rm = MithUI:GetModule("radialMenu")
         if rm then rm:Toggle() end
     end)
+
+    local refreshBtn = self:CreateButton(content, "Refresh", 110, yOffset, 70, function()
+        local rm = MithUI:GetModule("radialMenu")
+        if rm then
+            rm:BuildAllRings()
+            MithUI:Print("Rings refreshed")
+        end
+    end)
     yOffset = yOffset - 40
-    
+
     -- Help text
     local helpText = content:CreateFontString(nil, "OVERLAY")
-    helpText:SetFont("Fonts\\FRIZQT__.TTF", 10, "")
+    helpText:SetFont("Fonts\\FRIZQT__.TTF", 9, "")
     helpText:SetPoint("TOPLEFT", 0, yOffset)
     helpText:SetWidth(400)
     helpText:SetJustifyH("LEFT")
     helpText:SetTextColor(unpack(COLORS.textDim))
-    helpText:SetText("Press keybind > Scroll wheel to change rings > Click item")
+    helpText:SetText("Hold keybind > Hover slice > Release to use\nScroll wheel to switch between rings\nRight-click to cancel\n\nUse /mp for more options")
 end
 
 function ConfigGUI:BuildAssistTab()

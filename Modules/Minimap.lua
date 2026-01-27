@@ -38,8 +38,13 @@ function Minimap:OnInitialize()
 end
 
 function Minimap:OnEnable()
+    -- Ensure minimap settings exist in database
+    if not MithUIDB.minimap then
+        MithUIDB.minimap = {}
+        MithUI:CopyTable(defaults, MithUIDB.minimap)
+    end
     db = MithUIDB.minimap
-    
+
     -- Delay to let other addons create their buttons
     C_Timer.After(2, function()
         Minimap:ApplySettings()
@@ -48,22 +53,34 @@ function Minimap:OnEnable()
 end
 
 function Minimap:ApplySettings()
-    if not db.enabled then return end
+    if not db or not db.enabled then return end
     
-    -- Hide zoom buttons
+    -- Hide zoom buttons (removed in WoW 12.0, check existence)
     if db.hideZoomButtons then
-        MinimapZoomIn:Hide()
-        MinimapZoomIn:UnregisterAllEvents()
-        MinimapZoomOut:Hide()
-        MinimapZoomOut:UnregisterAllEvents()
-        
+        if MinimapZoomIn then
+            MinimapZoomIn:Hide()
+            MinimapZoomIn:UnregisterAllEvents()
+        end
+        if MinimapZoomOut then
+            MinimapZoomOut:Hide()
+            MinimapZoomOut:UnregisterAllEvents()
+        end
+
         -- Enable scroll zoom instead
         _G.Minimap:EnableMouseWheel(true)
         _G.Minimap:SetScript("OnMouseWheel", function(self, delta)
             if delta > 0 then
-                _G.Minimap_ZoomIn()
+                if _G.Minimap_ZoomIn then
+                    _G.Minimap_ZoomIn()
+                else
+                    _G.Minimap:SetZoom(min(_G.Minimap:GetZoom() + 1, _G.Minimap:GetZoomLevels()))
+                end
             else
-                _G.Minimap_ZoomOut()
+                if _G.Minimap_ZoomOut then
+                    _G.Minimap_ZoomOut()
+                else
+                    _G.Minimap:SetZoom(max(_G.Minimap:GetZoom() - 1, 0))
+                end
             end
         end)
     end
@@ -110,7 +127,7 @@ function Minimap:ApplySettings()
 end
 
 function Minimap:CollectButtons()
-    if not db.collectButtons then return end
+    if not db or not db.collectButtons then return end
     
     -- Create button bag (hidden container that shows on hover)
     if not buttonBag then

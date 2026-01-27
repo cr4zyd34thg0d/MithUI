@@ -30,9 +30,17 @@ MithUI.defaults = {
     radialMenu = {
         enabled = true,
         scale = 1.0,
-        ringRadius = 150,
-        buttonSize = 30,
-        fadeTime = 0.2,
+        radius = 120,
+        sliceSize = 40,
+        showCooldowns = true,
+        showRingName = true,
+        maxMountSlices = 12,
+        rings = {
+            {name = "Mounts", builtin = "mounts", enabled = true},
+            {name = "Hearthstones", builtin = "hearthstones", enabled = true},
+            {name = "Class Spells", builtin = "classspells", enabled = true},
+            {name = "Target Markers", builtin = "markers", enabled = true},
+        },
     },
 }
 

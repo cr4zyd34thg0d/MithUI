@@ -201,33 +201,43 @@ function Options:BuildRadialMenuOptions(content)
     if not MithUIDB.radialMenu then MithUIDB.radialMenu = {} end
     local db = MithUIDB.radialMenu
     local yOffset = 0
-    
+
     Options:CreateCheckbox(content, "Enable Radial Menu", 0, yOffset, db, "enabled")
     yOffset = yOffset - 30
-    
-    Options:CreateCheckbox(content, "Use Favorite Mounts", 0, yOffset, db, "useFavoriteMounts")
+
+    Options:CreateCheckbox(content, "Show Cooldowns on Slices", 0, yOffset, db, "showCooldowns")
+    yOffset = yOffset - 30
+
+    Options:CreateCheckbox(content, "Show Ring Name", 0, yOffset, db, "showRingName")
     yOffset = yOffset - 40
-    
+
+    -- Initialize scalePercent from scale for slider
+    db.scalePercent = (db.scale or 1) * 100
+
     Options:CreateSlider(content, "Scale", 0, yOffset, 50, 200, db, "scalePercent", function(val)
         db.scale = val / 100
         if MithUIRadialMenu then MithUIRadialMenu:SetScale(db.scale) end
     end)
-    -- Initialize scalePercent from scale
-    db.scalePercent = (db.scale or 1) * 100
     yOffset = yOffset - 60
-    
-    Options:CreateSlider(content, "Ring Radius", 0, yOffset, 60, 150, db, "ringRadius")
+
+    Options:CreateSlider(content, "Ring Radius", 0, yOffset, 60, 200, db, "radius")
     yOffset = yOffset - 60
-    
-    Options:CreateSlider(content, "Button Size", 0, yOffset, 30, 60, db, "buttonSize")
+
+    Options:CreateSlider(content, "Slice Size", 0, yOffset, 24, 60, db, "sliceSize")
     yOffset = yOffset - 60
-    
+
+    Options:CreateSlider(content, "Max Favorite Mounts", 0, yOffset, 4, 32, db, "maxMountSlices", function(val)
+        local rm = MithUI:GetModule("radialMenu")
+        if rm then rm:BuildAllRings() end
+    end)
+    yOffset = yOffset - 60
+
     -- Keybind info
     local keybindInfo = content:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     keybindInfo:SetPoint("TOPLEFT", 0, yOffset)
     keybindInfo:SetWidth(400)
     keybindInfo:SetJustifyH("LEFT")
-    keybindInfo:SetText("|cff00ccffKeybind:|r Go to Key Bindings > Addons > MithUI\n\nHold key > Move to category > Move to item > Release")
+    keybindInfo:SetText("|cff00ccffKeybind:|r Use |cff00ff00/mu|r to set keybind, or Key Bindings > Addons > MithUI\n\n|cff00ccffUsage:|r Hold keybind > Hover slice > Release to use\nScroll wheel to switch rings | Right-click to cancel\n\n|cff00ccffRings:|r Mounts, Hearthstones, Class Spells, Target Markers\nEnable/disable rings in |cff00ff00/mu|r settings")
 end
 
 -- Auto Vendor Options
